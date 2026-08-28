@@ -73,9 +73,6 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
   return (
     <div className={estilos.marco}>
       <table className={estilos.tabla}>
-        <caption className={estilos.leyenda}>
-          Precios y rendimientos del universo completo. Ordenable por cualquier columna.
-        </caption>
         <thead>
           <tr>
             {COLUMNAS.map((c) => {
@@ -112,19 +109,7 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
               <tr key={i.ticker} data-marcado={marcado || undefined}>
                 <th scope="row" className={`mono ${estilos.ticker}`}>{i.ticker}</th>
                 <td className={estilos.fecha}>{fechaCorta(i.maturityDate)}</td>
-                <td
-                  className={`mono ${estilos.numerica}`}
-                  title={
-                    i.settlementBasis === 'contado'
-                      ? 'Plazo contado: a 24 horas liquidaría en el vencimiento o después.'
-                      : 'Plazo desde la liquidación a 24 horas.'
-                  }
-                >
-                  {entero(i.daysToMaturity)}
-                  {i.settlementBasis === 'contado' && (
-                    <span className={estilos.contado}> CI</span>
-                  )}
-                </td>
+                <td className={`mono ${estilos.numerica}`}>{entero(i.daysToMaturity)}</td>
                 <td className={`mono ${estilos.numerica} ${estilos.precio}`}>{precio(i.lastPrice)}</td>
                 <td className={`mono ${estilos.numerica}`} data-tono={tono(i.priceChange)}>
                   {numeroFirmado(i.priceChange)}

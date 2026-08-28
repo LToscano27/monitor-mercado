@@ -24,10 +24,6 @@ export function SelectorInstrumentos({
   onToggle,
   onTodos,
 }: Props) {
-  const dentro = instrumentos.filter(
-    (i) => i.quality.level === 'ok' && !excluidos.has(i.ticker),
-  ).length;
-
   return (
     <div className={estilos.barra}>
       <span className={estilos.titulo}>En la curva</span>
@@ -51,10 +47,6 @@ export function SelectorInstrumentos({
           );
         })}
       </div>
-
-      <span className={estilos.cuenta}>
-        {dentro} de {instrumentos.length}
-      </span>
 
       {excluidos.size > 0 && (
         <button type="button" onClick={onTodos} className={estilos.restaurar}>

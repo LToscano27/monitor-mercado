@@ -167,10 +167,7 @@ export function Tablero({ slug, universos }: Props) {
               </span>
             </label>
 
-            <p className={estilos.nota}>
-              {datos.conventions.dayCountBasis} · liquidación {datos.conventions.settlement} ·
-              capitalización {datos.conventions.capitalization}
-            </p>
+            <p className={estilos.nota}>Cotizaciones a 24 horas</p>
           </div>
 
           <div className={estilos.contenido} data-cargando={cargando || undefined}>
@@ -179,11 +176,6 @@ export function Tablero({ slug, universos }: Props) {
                 <h2 id="t-curva" className={estilos.panelTitulo}>
                   Curva de tasa fija
                 </h2>
-                <p className={estilos.panelBajada}>
-                  Cada punto es un instrumento. El trazo es un ajuste logarítmico sobre
-                  los bonos elegidos: sacá cualquiera de la lista o hacé clic en su punto
-                  y sale del gráfico, con la curva reajustada a los que queden.
-                </p>
               </div>
               <SelectorInstrumentos
                 instrumentos={datos.instruments}
@@ -206,9 +198,6 @@ export function Tablero({ slug, universos }: Props) {
                 <h2 id="t-tabla" className={estilos.panelTitulo}>
                   Precios
                 </h2>
-                <p className={estilos.panelBajada}>
-                  El universo completo, con los rendimientos ya calculados en el servidor.
-                </p>
               </div>
               <TablaPrecios instrumentos={datos.instruments} />
             </section>

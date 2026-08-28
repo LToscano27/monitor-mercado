@@ -85,14 +85,6 @@
   stroke-linejoin: round;
 }
 
-.notaAjuste {
-  fill: var(--tinta-3);
-  font-family: var(--fuente-mono);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  text-anchor: end;
-}
-
 .puntoPleno {
   fill: var(--tinta);
   stroke: var(--panel);
