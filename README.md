@@ -120,13 +120,28 @@ una regla cambia, cambia ahí y en ningún otro archivo.
 |---|---|
 | Base de días | **actual/365** |
 | Liquidación | **T+1 hábil** (con calendario de feriados bursátiles) |
-| Días al vencimiento | desde la **fecha de liquidación**, no desde hoy |
+| Días al vencimiento | desde la **fecha de liquidación de su rueda**, no desde hoy |
 | Capitalización | meses calendario enteros + remanente / 30 |
 | TEM | `(pagoFinal / precio) ^ (30 / díasAlVencimiento) − 1` |
 | TEA | `(pagoFinal / precio) ^ (365 / díasAlVencimiento) − 1` |
 
 TEM porque es como cotiza el mercado local; TEA para que la curva sea
 comparable. Son consistentes por construcción: `TEA = (1 + TEM) ^ (365/30) − 1`.
+
+### Papeles por vencer: contado en vez de 24hs
+
+El plazo sale de la rueda en la que el papel realmente cotiza, no de una regla
+de fechas. Casi todos operan a 24hs, y ahí los días se cuentan desde T+1.
+
+Un papel a pocos días de vencer pierde esa rueda —a 24hs liquidaría en el
+vencimiento o después— y queda operando **solo en contado**, que liquida el
+mismo día. BYMA lo refleja en `settlementType`: esas especies aparecen con
+`1` y sin fila `2`. Si se filtra por 24hs a secas desaparecen de la curva justo
+cuando siguen operando con volumen.
+
+Por eso `fetchQuotes` prefiere 24hs y cae a contado solo cuando no hay otra, y
+cada instrumento informa su `settlementBasis`. En la tabla esos papeles salen
+marcados con `CI`.
 
 ### El pago al vencimiento
 

@@ -71,7 +71,7 @@ async function main() {
         QUALITY_MARK[i.quality.level],
         i.ticker.padEnd(6),
         i.maturityDate.padEnd(10),
-        String(i.calendarDaysToMaturity).padStart(5),
+        (String(i.daysToMaturity) + (i.settlementBasis === 'contado' ? '*' : '')).padStart(5),
         num(i.lastPrice).padStart(9),
         num(i.priceChange).padStart(7),
         (i.priceChangePct === null ? '—' : i.priceChangePct.toFixed(2)).padStart(7),

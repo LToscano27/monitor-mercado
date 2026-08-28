@@ -166,13 +166,22 @@ export async function buildUniverse(
 
   for (const [symbol, ref] of universe.reference) {
     const maturity = parseIsoDate(ref.maturityDate);
-    const daysToMaturity = daysBetween(settlement, maturity);
-    const calendarDaysToMaturity = daysBetween(tradeDate, maturity);
     const quote = quotes.get(symbol);
+
+    /*
+     * El plazo sale de la rueda en la que el papel realmente cotiza, no de una
+     * regla de fechas. Casi todos operan a 24hs; los que están por vencer
+     * pierden esa rueda —liquidaría en el vencimiento o después— y quedan solo
+     * en contado, que liquida el mismo día. Los días se cuentan desde la fecha
+     * en que el comprador efectivamente paga.
+     */
+    const settlementBasis: InstrumentRow['settlementBasis'] = quote?.settlement ?? 'T+1';
+    const liquidacion = settlementBasis === 'contado' ? tradeDate : settlement;
+    const daysToMaturity = daysBetween(liquidacion, maturity);
 
     if (!quote) {
       instruments.push(
-        emptyRow(ref, daysToMaturity, calendarDaysToMaturity, {
+        emptyRow(ref, daysToMaturity, settlementBasis, {
           code: 'STALE_PRICE',
           level: 'bad',
           message:
@@ -199,7 +208,7 @@ export async function buildUniverse(
       flags.push({
         code: 'MATURED',
         level: 'bad',
-        message: `Vence el ${ref.maturityDate}, anterior o igual a la liquidación ${toIsoDate(settlement)}.`,
+        message: `Vence el ${ref.maturityDate}, anterior o igual a la liquidación ${toIsoDate(liquidacion)}.`,
       });
     }
 
@@ -213,7 +222,7 @@ export async function buildUniverse(
       });
     }
 
-    const valuation = universe.valuate(ref, quote, price, settlement);
+    const valuation = universe.valuate(ref, quote, price, liquidacion);
     if (price !== null && valuation === null) {
       flags.push({
         code: 'MISSING_REFERENCE',
@@ -231,7 +240,7 @@ export async function buildUniverse(
       name: ref.name,
       maturityDate: ref.maturityDate,
       daysToMaturity,
-      calendarDaysToMaturity,
+      settlementBasis,
       lastPrice: price,
       priceBasis,
       priceDate: quote.priceDate ?? tradeDateIso,
@@ -315,7 +324,7 @@ export async function buildUniverse(
 function emptyRow(
   ref: ZeroCouponReference,
   daysToMaturity: number,
-  calendarDaysToMaturity: number,
+  settlementBasis: InstrumentRow['settlementBasis'],
   flag: QualityFlag,
 ): InstrumentRow {
   return {
@@ -323,7 +332,7 @@ function emptyRow(
     name: ref.name,
     maturityDate: ref.maturityDate,
     daysToMaturity,
-    calendarDaysToMaturity,
+    settlementBasis,
     lastPrice: null,
     priceBasis: null,
     priceDate: null,
