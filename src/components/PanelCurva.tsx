@@ -7,8 +7,6 @@ import { regresionLogaritmica } from '@/lib/ajuste';
 import {
   entero,
   fechaCorta,
-  guion,
-  monto,
   numeroFirmado,
   pct,
   pctFirmado,
@@ -334,9 +332,6 @@ function Globo({
           valor={`${numeroFirmado(i.priceChange)}  ${pctFirmado(i.priceChangePct)}`}
           tono={i.priceChangePct === null ? undefined : i.priceChangePct >= 0 ? 'sube' : 'baja'}
         />
-        <Fila etiqueta="Pago final" valor={precio(i.finalPayment)} />
-        <Fila etiqueta="Volumen" valor={monto(i.volumeAmount ?? i.volumeNominal)} />
-        <Fila etiqueta="Último trade" valor={i.lastTradeTime ?? guion} />
       </dl>
 
       {i.quality.flags.length > 0 && (
