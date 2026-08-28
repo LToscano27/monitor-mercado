@@ -19,7 +19,7 @@ import type {
 } from './types';
 import type { UniverseDefinition } from './universes/types';
 
-const FETCH_TIMEOUT_MS = 8_000;
+const FETCH_TIMEOUT_MS = 12_000;
 /** La serie de cierre son ~11 pedidos en lotes; necesita más aire. */
 const CLOSING_TIMEOUT_MS = 25_000;
 
@@ -44,21 +44,32 @@ function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms = FETCH_TIME
 }
 
 /**
- * ¿El panel en vivo tiene datos de la rueda en curso?
+ * ¿El panel tiene una rueda en curso?
  *
- * Fuera del horario de rueda BYMA no deja de responder: devuelve el panel
- * completo con todos los campos en cero, cierre anterior incluido. Un panel
- * ceroteado no es "el mercado no operó", es "no hay rueda abierta".
+ * Hacen falta dos cosas, y las dos importan:
+ *
+ *  1. Precios. Fuera de horario BYMA no deja de responder: devuelve el panel
+ *     completo con todos los campos en cero, cierre anterior incluido. Un
+ *     panel ceroteado no es "el mercado no operó", es "no hay rueda abierta".
+ *
+ *  2. Hora de algún trade. data912 sigue sirviendo el último precio conocido
+ *     mucho después del cierre, sin decir de cuándo es. Sin hora de trade no
+ *     hay evidencia de rueda abierta, y llamar "en curso" a un precio de ayer
+ *     es peor que no mostrarlo: el lector cree que está viendo el mercado.
  */
 function panelTieneRueda(
   quotes: Map<string, Quote>,
   universe: UniverseDefinition,
 ): boolean {
+  let hayPrecio = false;
+  let hayHora = false;
   for (const symbol of universe.reference.keys()) {
     const q = quotes.get(symbol);
-    if (q && (q.last !== null || q.previousClose !== null)) return true;
+    if (!q) continue;
+    if (q.last !== null || q.previousClose !== null) hayPrecio = true;
+    if (q.lastTradeTime) hayHora = true;
   }
-  return false;
+  return hayPrecio && hayHora;
 }
 
 /**
@@ -100,17 +111,28 @@ async function fetchQuotesWithFallback(
   }
 
   // Mercado cerrado: los precios son los de cierre de la última rueda.
-  const cierres = await withTimeout(
-    (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
-    CLOSING_TIMEOUT_MS,
-  );
-  return {
-    quotes: cierres,
-    source: 'byma',
-    fallbackUsed: false,
-    session: 'cierre',
-    warnings,
-  };
+  try {
+    const cierres = await withTimeout(
+      (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
+      CLOSING_TIMEOUT_MS,
+    );
+    if (cierres.size > 0) {
+      return { quotes: cierres, source: 'byma', fallbackUsed: false, session: 'cierre', warnings };
+    }
+    warnings.push('La serie histórica de BYMA no devolvió cierres.');
+  } catch (err) {
+    warnings.push(`No se pudieron traer los cierres de BYMA (${(err as Error).message}).`);
+  }
+
+  // Último recurso: lo que haya quedado en el panel, avisando que no sabemos
+  // a qué momento corresponde.
+  if (quotes) {
+    warnings.push(
+      'Los precios salen del panel en vivo pero no hay hora de trade: puede que no correspondan a la rueda en curso.',
+    );
+    return { quotes, source, fallbackUsed, session: 'intradiaria', warnings };
+  }
+  throw new Error('Ninguna fuente devolvió datos.');
 }
 
 export async function buildUniverse(

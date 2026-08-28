@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UniverseResponse } from '@/lib/types';
 import { PanelCurva, type Metrica } from './PanelCurva';
+import { SelectorInstrumentos } from './SelectorInstrumentos';
 import { TablaPrecios } from './TablaPrecios';
 import { SelectorTema } from './SelectorTema';
-import { fechaCorta, guion, haceCuanto } from '@/lib/format';
+import { fechaCorta, guion } from '@/lib/format';
 import estilos from './Tablero.module.css';
 
 const REFRESCO_MS = 30_000;
@@ -21,7 +22,15 @@ export function Tablero({ slug, universos }: Props) {
   const [cargando, setCargando] = useState(true);
   const [metrica, setMetrica] = useState<Metrica>('tea');
   const [ocultarMarcados, setOcultarMarcados] = useState(false);
-  const [ahora, setAhora] = useState(() => Date.now());
+  const [excluidos, setExcluidos] = useState<ReadonlySet<string>>(new Set());
+
+  const alternarInstrumento = useCallback((ticker: string) => {
+    setExcluidos((prev) => {
+      const siguiente = new Set(prev);
+      if (!siguiente.delete(ticker)) siguiente.add(ticker);
+      return siguiente;
+    });
+  }, []);
 
   const traer = useCallback(async () => {
     setCargando(true);
@@ -34,7 +43,6 @@ export function Tablero({ slug, universos }: Props) {
       setError((err as Error).message);
     } finally {
       setCargando(false);
-      setAhora(Date.now());
     }
   }, [slug]);
 
@@ -43,11 +51,6 @@ export function Tablero({ slug, universos }: Props) {
     const id = setInterval(traer, REFRESCO_MS);
     return () => clearInterval(id);
   }, [traer]);
-
-  useEffect(() => {
-    const id = setInterval(() => setAhora(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const marcados = useMemo(
     () => datos?.instruments.filter((i) => i.quality.level !== 'ok').length ?? 0,
@@ -111,7 +114,6 @@ export function Tablero({ slug, universos }: Props) {
                   </span>
                 </span>
               </div>
-              <Dato etiqueta="Liquidación" valor={fechaCorta(datos.settlementDate)} />
               <Dato
                 etiqueta="Último dato"
                 valor={ultimoDato ?? guion}
@@ -121,7 +123,6 @@ export function Tablero({ slug, universos }: Props) {
                 etiqueta="Fuente"
                 valor={datos.sourceFallbackUsed ? `${datos.source} · respaldo` : datos.source}
               />
-              <Dato etiqueta="Consultado" valor={haceCuanto(datos.fetchedAt, ahora)} />
             </>
           )}
           <SelectorTema />
@@ -175,16 +176,24 @@ export function Tablero({ slug, universos }: Props) {
                   Curva de tasa fija
                 </h2>
                 <p className={estilos.panelBajada}>
-                  Cada punto es un instrumento en su fecha de vencimiento. El trazo es
-                  un ajuste logarítmico sobre los puntos sin marcas de calidad. Abajo del
-                  eje, lo que se movió hoy.
+                  Cada punto es un instrumento. El trazo es un ajuste logarítmico sobre
+                  los bonos elegidos: sacá cualquiera de la lista o hacé clic en su punto
+                  y la curva se recalcula.
                 </p>
               </div>
+              <SelectorInstrumentos
+                instrumentos={datos.instruments}
+                excluidos={excluidos}
+                metrica={metrica}
+                onToggle={alternarInstrumento}
+                onTodos={() => setExcluidos(new Set())}
+              />
               <PanelCurva
                 instrumentos={datos.instruments}
                 metrica={metrica}
-                liquidacion={datos.settlementDate}
                 ocultarMarcados={ocultarMarcados}
+                excluidos={excluidos}
+                onToggle={alternarInstrumento}
               />
             </section>
 

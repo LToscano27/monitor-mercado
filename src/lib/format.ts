@@ -8,11 +8,6 @@ const MESES = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
-const MESES_EJE = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
-];
-
 export const guion = '—';
 
 export function pct(value: number | null, digits = 2): string {
@@ -80,22 +75,7 @@ export function fechaLarga(iso: string): string {
   return `${d} de ${nombres[m - 1]} de ${y}`;
 }
 
-/** Etiqueta de mes para el eje de vencimientos: 'NOV' y 'ENE 27' en enero. */
-export function etiquetaMes(year: number, monthIndex: number): string {
-  const mes = MESES_EJE[monthIndex];
-  return monthIndex === 0 ? `${mes} ${String(year).slice(2)}` : mes;
-}
-
 export function horaDeTimestamp(iso: string | null): string {
   if (!iso) return guion;
   return iso.slice(11, 19);
-}
-
-/** 'hace 12 s' / 'hace 3 min' — para el indicador de frescura. */
-export function haceCuanto(desde: string, ahora: number): string {
-  const seg = Math.max(0, Math.round((ahora - new Date(desde).getTime()) / 1000));
-  if (seg < 60) return `hace ${seg} s`;
-  const min = Math.round(seg / 60);
-  if (min < 60) return `hace ${min} min`;
-  return `hace ${Math.round(min / 60)} h`;
 }

@@ -1,0 +1,72 @@
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--regla);
+}
+
+.titulo {
+  color: var(--tinta-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.fichas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ficha {
+  padding: 3px 8px;
+  background: var(--tinta);
+  border: 1px solid var(--tinta);
+  border-radius: var(--radio);
+  color: var(--panel);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+/* Fuera del ajuste: hueco y tachado. La forma lo dice, no el color. */
+.ficha[data-fuera] {
+  background: transparent;
+  border-color: var(--eje);
+  color: var(--tinta-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.ficha:hover {
+  border-color: var(--tinta-2);
+}
+
+.ficha[data-fuera]:hover {
+  color: var(--tinta-2);
+}
+
+.cuenta {
+  color: var(--tinta-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.restaurar {
+  padding: 3px 9px;
+  background: none;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  color: var(--tinta-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.restaurar:hover {
+  border-color: var(--tinta-2);
+  color: var(--tinta);
+}
