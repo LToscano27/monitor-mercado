@@ -5,9 +5,9 @@ import { getUniverse, listUniverses } from '@/lib/universes';
 /**
  * Proxy server-side hacia la fuente de mercado.
  *
- * El frontend nunca le pega a BYMA ni a data912. Además del CORS, todos los
- * cálculos de rendimiento viven de este lado: el cliente recibe números
- * listos y sólo los dibuja.
+ * El frontend nunca le pega a BYMA. Además del CORS, todos los cálculos de
+ * rendimiento viven de este lado: el cliente recibe números listos y sólo los
+ * dibuja.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

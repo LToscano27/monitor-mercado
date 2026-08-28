@@ -31,7 +31,7 @@ export interface Quote {
   source: SourceId;
 }
 
-export type SourceId = 'byma' | 'data912';
+export type SourceId = 'byma';
 
 /** Datos de referencia estáticos de un instrumento cero cupón capitalizable. */
 export interface ZeroCouponReference {
@@ -59,7 +59,6 @@ export type QualityFlagCode =
   | 'STALE_PRICE'
   | 'THIN_VOLUME'
   | 'MISSING_REFERENCE'
-  | 'UNKNOWN_PRICE_DATE'
   | 'MATURITY_MISMATCH'
   | 'MATURED';
 
@@ -113,19 +112,17 @@ export interface UniverseResponse {
   /**
    * A qué rueda corresponden los precios:
    *  - 'intradiaria'  panel en vivo, rueda en curso;
-   *  - 'cierre'       cierre de la última rueda;
-   *  - 'desconocida'  hay precios pero no se pudo establecer de cuándo son.
+   *  - 'cierre'       cierre de la última rueda.
    *
-   * 'desconocida' no es un detalle: un precio sin momento no se puede leer
-   * como mercado. La interfaz tiene que decirlo, no suponer.
+   * No hay un tercer estado. Con BYMA como única fuente, o sabemos de cuándo
+   * es el precio o no hay respuesta: nunca se publica un precio sin fecha.
    */
-  session: 'intradiaria' | 'cierre' | 'desconocida';
+  session: 'intradiaria' | 'cierre';
   /** Fecha de liquidación T+1 usada para contar días. */
   settlementDate: IsoDate;
   /** Momento en que nuestro backend trajo el dato. */
   fetchedAt: string;
   source: SourceId;
-  sourceFallbackUsed: boolean;
   conventions: typeof import('./conventions').CONVENTIONS_META;
   instruments: InstrumentRow[];
   /** Problemas a nivel universo, no a nivel instrumento. */

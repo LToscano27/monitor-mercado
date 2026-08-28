@@ -1,5 +1,4 @@
 import type { BymaPanel } from '../sources/byma';
-import type { Data912Feed } from '../sources/data912';
 import type { QualityThresholds } from '../quality';
 import type { Quote, ZeroCouponReference } from '../types';
 
@@ -24,7 +23,6 @@ export interface UniverseDefinition {
   label: string;
   description: string;
   bymaPanels: readonly BymaPanel[];
-  data912Feeds: readonly Data912Feed[];
   thresholds: QualityThresholds;
   /** Referencia estática por ticker, generada por scripts/refresh-reference.ts. */
   reference: ReadonlyMap<string, ZeroCouponReference>;

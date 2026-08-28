@@ -40,7 +40,7 @@ async function main() {
 
   console.log(`\n${payload.label.toUpperCase()}  ·  universo "${payload.universe}"`);
   console.log(
-    `rueda ${payload.tradeDate} (${payload.session})  ·  liquidación ${payload.settlementDate}  ·  fuente ${payload.source}${payload.sourceFallbackUsed ? ' (RESPALDO)' : ''}`,
+    `rueda ${payload.tradeDate} (${payload.session})  ·  liquidación ${payload.settlementDate}  ·  fuente ${payload.source}`,
   );
   console.log(
     `convención ${payload.conventions.dayCountBasis}, ${payload.conventions.settlement}, capitalización ${payload.conventions.capitalization}`,
