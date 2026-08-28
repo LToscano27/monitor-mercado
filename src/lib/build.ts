@@ -29,7 +29,12 @@ import type { UniverseDefinition } from './universes/types';
  * queda tiempo para responder algo.
  */
 const PRESUPUESTO_MS = 18_000;
-const PANEL_TIMEOUT_MS = 7_000;
+/** BYMA sano responde en ~2s. Si tarda más, es que no está: cortamos temprano
+ *  para dejarle presupuesto al respaldo, que es el que va a tener que servir. */
+const PANEL_TIMEOUT_MS = 5_000;
+/** Techo del respaldo. Se le da lo que quede del presupuesto hasta este máximo:
+ *  es la última fuente con chance de traer datos, no se la puede ahogar. */
+const RESPALDO_TIMEOUT_MAX_MS = 10_000;
 /** La serie de cierre son ~11 pedidos en lotes; necesita más aire. */
 const CLOSING_TIMEOUT_MS = 14_000;
 /** Debajo de esto no vale la pena arrancar un intento. */
@@ -126,7 +131,7 @@ async function fetchQuotesWithFallback(
     try {
       quotes = await presupuesto.correr(
         (signal) => data912.fetchQuotes(universe.data912Feeds, signal),
-        PANEL_TIMEOUT_MS,
+        Math.min(RESPALDO_TIMEOUT_MAX_MS, presupuesto.restante()),
       );
       source = 'data912';
       fallbackUsed = true;
