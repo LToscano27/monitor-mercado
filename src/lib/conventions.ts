@@ -81,6 +81,27 @@ export function marketToday(now: Date = new Date()): Date {
 }
 
 /**
+ * Horario de rueda de la plaza local, en hora de Buenos Aires.
+ *
+ * Sirve para distinguir una rueda en curso de una ya cerrada. No alcanza con
+ * mirar si el panel trae datos: BYMA conserva los de la rueda durante horas
+ * después del cierre, y sin el horario esa foto se leería como si el mercado
+ * siguiera abierto.
+ */
+export const TRADING_HOURS = { open: 11, close: 17 } as const;
+
+export function isWithinTradingHours(now: Date = new Date()): boolean {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MARKET_TIMEZONE,
+    hour: '2-digit',
+    hour12: false,
+  }).format(now);
+  const hora = Number(partes);
+  if (!isBusinessDay(marketToday(now))) return false;
+  return hora >= TRADING_HOURS.open && hora < TRADING_HOURS.close;
+}
+
+/**
  * Días hábiles entre dos fechas, sin contar la de partida.
  *
  * Es lo que dice cuánta vida operativa le queda a un papel: dos fechas a tres
