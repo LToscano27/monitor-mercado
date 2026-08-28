@@ -211,6 +211,15 @@ la lista de fichas o haciendo clic en su punto. Al sacarlo desaparece del
 gráfico — punto y etiqueta — y la regresión se recalcula con los que queden.
 Los instrumentos con marcas de calidad quedan fuera del ajuste siempre.
 
+**Los papeles a un día hábil o menos del vencimiento salen por defecto.** A ese
+plazo la tasa implícita deja de ser información: la TEM eleva el cociente a la
+potencia 30/días, así que a tres días calendario cualquier ruido de precio se
+multiplica por diez. Medido sobre S31G6: un centavo de precio mueve la TEM 0,8
+puntos básicos, y cuatro centavos —0,03% del precio— explican 34 puntos básicos
+de diferencia contra otra fuente. Siguen en la tabla con su precio y su
+variación, que son datos reales; lo que no hacen es torcer el ajuste. Es un
+default, no una regla: con un clic en su ficha vuelven.
+
 ## Diseño
 
 Tokens en `src/app/globals.css`. La regla rectora: **el único color saturado de
