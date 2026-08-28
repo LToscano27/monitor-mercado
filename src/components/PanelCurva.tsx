@@ -19,7 +19,6 @@ export type Metrica = 'tea' | 'tem';
 interface Props {
   instrumentos: InstrumentRow[];
   metrica: Metrica;
-  ocultarMarcados: boolean;
   /** Tickers sacados a mano del ajuste. */
   excluidos: ReadonlySet<string>;
   onToggle: (ticker: string) => void;
@@ -34,13 +33,7 @@ const PAD_DER = 24;
 const RADIO_PUNTO = 4.5;
 const ALTO_TOTAL = PAD_SUP + ALTO_CURVA + ALTO_EJE;
 
-export function PanelCurva({
-  instrumentos,
-  metrica,
-  ocultarMarcados,
-  excluidos,
-  onToggle,
-}: Props) {
+export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props) {
   const [ancho, setAncho] = useState(960);
   const [activo, setActivo] = useState<string | null>(null);
 
@@ -59,12 +52,8 @@ export function PanelCurva({
    * quedan y el gráfico muestra sólo la curva elegida. Vuelve con su ficha.
    */
   const visibles = useMemo(
-    () =>
-      instrumentos.filter(
-        (i) =>
-          !excluidos.has(i.ticker) && (!ocultarMarcados || i.quality.level === 'ok'),
-      ),
-    [instrumentos, ocultarMarcados, excluidos],
+    () => instrumentos.filter((i) => !excluidos.has(i.ticker)),
+    [instrumentos, excluidos],
   );
 
   const geometria = useMemo(() => {
@@ -185,16 +174,6 @@ export function PanelCurva({
         <text x={geometria.x0 - 12} y={geometria.curvaSup - 6} className={estilos.tituloEje}>
           {etiquetaMetrica}
         </text>
-
-        {instrumentoActivo && (
-          <line
-            x1={x(instrumentoActivo.daysToMaturity)}
-            x2={x(instrumentoActivo.daysToMaturity)}
-            y1={geometria.curvaSup}
-            y2={geometria.curvaInf}
-            className={estilos.hilo}
-          />
-        )}
 
         {/* ── curva de ajuste ───────────────────────────────────── */}
         {trazo && <path d={trazo} className={estilos.trazo} />}

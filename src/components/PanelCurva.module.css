@@ -33,12 +33,6 @@
   shape-rendering: crispEdges;
 }
 
-.hilo {
-  stroke: var(--tinta-3);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
 .marcaEje {
   fill: var(--tinta-3);
   font-family: var(--fuente-mono);
