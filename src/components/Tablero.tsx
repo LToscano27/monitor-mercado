@@ -186,7 +186,7 @@ export function Tablero({ slug, universos }: Props) {
                 valor={ultimoDato ?? guion}
                 mono={datos.session !== 'cierre'}
               />
-              <Dato etiqueta="Fuente" valor={datos.source} />
+              <Dato etiqueta="Fuente" valor={datos.source.toUpperCase()} />
             </>
           )}
           <SelectorTema />
