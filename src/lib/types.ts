@@ -59,6 +59,7 @@ export type QualityFlagCode =
   | 'STALE_PRICE'
   | 'THIN_VOLUME'
   | 'MISSING_REFERENCE'
+  | 'UNKNOWN_PRICE_DATE'
   | 'MATURITY_MISMATCH'
   | 'MATURED';
 
