@@ -143,6 +143,13 @@
   background: var(--tinta-3);
 }
 
+.contado {
+  margin-left: 4px;
+  color: var(--tinta-3);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+
 .sinMarca {
   color: var(--tinta-3);
 }

@@ -21,8 +21,17 @@ const BASE =
  */
 export type BymaPanel = 'lebacs' | 'public-bonds';
 
-/** settlementType "2" = 24hs (T+1). Es el plazo de referencia del mercado. */
+/**
+ * Plazos de liquidación de BYMA.
+ *
+ * 24hs es el de referencia del mercado y el que se usa siempre que exista.
+ * Contado inmediato es la excepción necesaria: un papel a pocos días de vencer
+ * deja de tener rueda a 24hs —liquidaría en el vencimiento o después— y pasa a
+ * operarse solo en contado. Si se filtra por 24hs a secas, ese papel
+ * desaparece de la curva justo cuando sigue operando con volumen.
+ */
 const SETTLEMENT_T1 = '2';
+const SETTLEMENT_CONTADO = '1';
 
 interface BymaPanelItem {
   symbol: string;
@@ -87,6 +96,7 @@ function zeroToNull(value: number | null | undefined): number | null {
 function normalize(item: BymaPanelItem): Quote {
   return {
     symbol: item.symbol,
+    settlement: item.settlementType === SETTLEMENT_CONTADO ? 'contado' : 'T+1',
     // BYMA repite el último trade en `trade` y `closingPrice` durante la
     // rueda. Si no operó, ambos vienen en 0.
     last: zeroToNull(item.trade) ?? zeroToNull(item.closingPrice),
@@ -110,8 +120,11 @@ function normalize(item: BymaPanelItem): Quote {
 }
 
 /**
- * Devuelve las cotizaciones T+1 en ARS de los paneles pedidos, indexadas por
- * ticker. Si el mismo ticker aparece en más de un panel gana el primero.
+ * Cotizaciones en ARS de los paneles pedidos, indexadas por ticker.
+ *
+ * Para cada especie se prefiere la rueda de 24hs; si no tiene, se toma la de
+ * contado y la cotización queda marcada como tal, para que el cálculo cuente
+ * los días desde la fecha correcta.
  */
 export async function fetchQuotes(
   panels: readonly BymaPanel[],
@@ -120,12 +133,20 @@ export async function fetchQuotes(
   const panelResults = await Promise.all(
     panels.map((p) => memo(`panel:${p}`, TTL_PANEL_MS, () => fetchPanel(p, signal))),
   );
+
   const quotes = new Map<string, Quote>();
   for (const items of panelResults) {
     for (const item of items) {
-      if (item.settlementType !== SETTLEMENT_T1) continue;
       if (item.denominationCcy !== 'ARS') continue;
-      if (!quotes.has(item.symbol)) quotes.set(item.symbol, normalize(item));
+      if (item.settlementType !== SETTLEMENT_T1 && item.settlementType !== SETTLEMENT_CONTADO) {
+        continue;
+      }
+      const previa = quotes.get(item.symbol);
+      // Sólo el contado cede ante el 24hs; nunca al revés.
+      if (previa && !(previa.settlement === 'contado' && item.settlementType === SETTLEMENT_T1)) {
+        continue;
+      }
+      quotes.set(item.symbol, normalize(item));
     }
   }
   return quotes;
@@ -281,6 +302,7 @@ async function traerCierres(
         orderCount: null,
         lastTradeTime: null,
         currency: 'ARS',
+        settlement: 'T+1',
         maturityDate: null,
         priceDate: ultima.date,
         source: 'byma',

@@ -16,8 +16,7 @@ import estilos from './TablaPrecios.module.css';
 
 type Clave =
   | 'ticker' | 'maturityDate' | 'daysToMaturity' | 'lastPrice' | 'priceChange'
-  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount' | 'orderCount'
-  | 'calendarDaysToMaturity';
+  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount' | 'orderCount';
 
 interface Columna {
   clave: Clave;
@@ -30,9 +29,9 @@ const COLUMNAS: Columna[] = [
   { clave: 'ticker', titulo: 'Ticker', numerica: false },
   { clave: 'maturityDate', titulo: 'Vence', numerica: false },
   {
-    clave: 'calendarDaysToMaturity',
+    clave: 'daysToMaturity',
     titulo: 'Días al vto.',
-    ayuda: 'Días corridos hasta el vencimiento. El rendimiento se calcula desde la liquidación T+1, que puede caer uno o más días después.',
+    ayuda: 'Días desde la liquidación hasta el vencimiento. Es el plazo con el que se calculan TEM y TEA. Normalmente T+1; los papeles que ya no se pueden operar a 24 horas se cuentan en contado y aparecen marcados.',
     numerica: true,
   },
   { clave: 'lastPrice', titulo: 'Precio', numerica: true },
@@ -47,7 +46,7 @@ const COLUMNAS: Columna[] = [
 
 export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }) {
   const [orden, setOrden] = useState<{ clave: Clave; desc: boolean }>({
-    clave: 'calendarDaysToMaturity',
+    clave: 'daysToMaturity',
     desc: false,
   });
 
@@ -113,8 +112,18 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
               <tr key={i.ticker} data-marcado={marcado || undefined}>
                 <th scope="row" className={`mono ${estilos.ticker}`}>{i.ticker}</th>
                 <td className={estilos.fecha}>{fechaCorta(i.maturityDate)}</td>
-                <td className={`mono ${estilos.numerica}`}>
-                  {entero(i.calendarDaysToMaturity)}
+                <td
+                  className={`mono ${estilos.numerica}`}
+                  title={
+                    i.settlementBasis === 'contado'
+                      ? 'Plazo contado: a 24 horas liquidaría en el vencimiento o después.'
+                      : 'Plazo desde la liquidación a 24 horas.'
+                  }
+                >
+                  {entero(i.daysToMaturity)}
+                  {i.settlementBasis === 'contado' && (
+                    <span className={estilos.contado}> CI</span>
+                  )}
                 </td>
                 <td className={`mono ${estilos.numerica} ${estilos.precio}`}>{precio(i.lastPrice)}</td>
                 <td className={`mono ${estilos.numerica}`} data-tono={tono(i.priceChange)}>

@@ -24,6 +24,8 @@ export interface Quote {
   /** Hora del último trade, 'HH:MM:SS' hora local de la plaza. */
   lastTradeTime: string | null;
   currency: string;
+  /** Plazo de la rueda de la que salió esta cotización. */
+  settlement: 'T+1' | 'contado';
   /** Vencimiento informado por la fuente, si lo informa. */
   maturityDate: IsoDate | null;
   /** Rueda a la que corresponde el precio. Null si es el panel en vivo de hoy. */
@@ -67,17 +69,21 @@ export interface InstrumentRow {
   name: string;
   maturityDate: IsoDate;
   /**
-   * Días desde la fecha de liquidación T+1 hasta el vencimiento.
-   * Es el plazo con el que se calculan TEM y TEA: el comprador de hoy cobra
-   * recién a partir de la liquidación.
+   * Días desde la liquidación hasta el vencimiento. Es a la vez lo que se
+   * muestra y el plazo con el que se calculan TEM y TEA: el comprador
+   * inmoviliza plata recién desde que liquida.
    */
   daysToMaturity: number;
   /**
-   * Días corridos desde la rueda hasta el vencimiento. Es lo que se muestra,
-   * porque es lo que alguien quiere decir cuando pregunta cuánto le falta a un
-   * papel. Puede diferir del anterior por el T+1 y los fines de semana.
+   * Con qué plazo de liquidación se contaron esos días.
+   *
+   * Casi siempre 'T+1', el plazo de referencia del mercado. Cuando el T+1
+   * caería en el vencimiento o después, el papel ya no se puede operar a 24
+   * horas y pasa a negociarse en contado: ahí el plazo se cuenta desde la
+   * rueda misma. Es lo que hacen las pantallas del mercado, y sin esto un
+   * papel a días de vencer se queda sin tasa.
    */
-  calendarDaysToMaturity: number;
+  settlementBasis: 'T+1' | 'contado';
   lastPrice: number | null;
   /**
    * De dónde salió lastPrice:
