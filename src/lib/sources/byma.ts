@@ -298,7 +298,23 @@ async function traerCierres(
         bidSize: null,
         askSize: null,
         volumeNominal: ultima.volume,
-        volumeAmount: null,
+        /*
+         * La serie histórica sólo trae volumen nominal: no publica ni el monto
+         * efectivo ni el VWAP. Se reconstruye con el precio de cierre.
+         *
+         * En el panel en vivo la identidad es exacta —nominal × VWAP / 100 da
+         * el volumeAmount de BYMA al peso—, así que la única aproximación acá
+         * es usar el cierre en lugar del VWAP de la rueda. Medido sobre S30O6:
+         * VWAP 130,15 contra cierre 130,09, un 0,05% de diferencia. Es un
+         * error mucho menor que el de mostrar el nominal, que para ese papel
+         * quedaba 30% abajo.
+         *
+         * Esta rama sólo se usa de madrugada, cuando BYMA ya rotó el panel.
+         * Durante la rueda y en las horas posteriores al cierre el monto sale
+         * exacto del panel.
+         */
+        volumeAmount:
+          ultima.volume !== null ? (ultima.volume * ultima.close) / 100 : null,
         orderCount: null,
         lastTradeTime: null,
         currency: 'ARS',

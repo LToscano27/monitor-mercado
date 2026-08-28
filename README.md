@@ -101,8 +101,19 @@ usó:
 
 | `session` | de dónde sale el precio |
 |---|---|
-| `intradiaria` | panel en vivo, último operado de la rueda en curso |
-| `cierre` | serie histórica, cierre de la última rueda |
+| `intradiaria` | panel, dentro del horario de rueda |
+| `cierre` | panel fuera de horario, o serie histórica si BYMA ya rotó el panel |
+
+El panel manda mientras tenga datos, esté el mercado abierto o cerrado: es la
+única fuente que trae el **volumen efectivo** de la rueda. BYMA lo conserva
+horas después del cierre y recién de madrugada rota a la sesión siguiente. La
+etiqueta de sesión sale del horario de rueda, no de si hay datos.
+
+La serie histórica sólo trae volumen nominal, así que en esa rama el monto
+efectivo se reconstruye con el precio de cierre. En el panel la identidad
+`nominal × VWAP / 100 = volumeAmount` es exacta al peso; la única aproximación
+es usar el cierre en lugar del VWAP, medida en 0,05% contra un error del 30%
+si se mostrara el nominal.
 
 No hay un tercer estado: o se sabe de cuándo es el precio, o no hay respuesta.
 

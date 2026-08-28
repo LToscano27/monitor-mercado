@@ -2,6 +2,7 @@ import {
   businessDaysBetween,
   CONVENTIONS_META,
   daysBetween,
+  isWithinTradingHours,
   marketToday,
   parseIsoDate,
   settlementDate,
@@ -65,31 +66,25 @@ function crearPresupuesto(total = PRESUPUESTO_MS) {
 }
 
 /**
- * ¿El panel tiene una rueda en curso?
+ * ¿El panel trae los datos de una rueda?
  *
- * Hacen falta dos cosas, y las dos importan:
+ * Fuera de horario BYMA no deja de responder: en algún momento de la noche
+ * rota a la sesión siguiente y devuelve el panel completo con todos los campos
+ * en cero, cierre anterior incluido. Un panel ceroteado no es "el mercado no
+ * operó", es "todavía no hay rueda".
  *
- *  1. Precios. Fuera de horario BYMA no deja de responder: devuelve el panel
- *     completo con todos los campos en cero, cierre anterior incluido. Un
- *     panel ceroteado no es "el mercado no operó", es "no hay rueda abierta".
- *
- *  2. Hora de algún trade. Es la evidencia de que esos precios son de hoy.
- *     Llamar "en curso" a un precio de ayer es peor que no mostrarlo: el
- *     lector cree que está viendo el mercado.
+ * Mientras el panel tenga datos es la mejor fuente que existe, esté el mercado
+ * abierto o cerrado: es la única que trae el volumen efectivo de la rueda.
  */
-function panelTieneRueda(
+function panelTieneDatos(
   quotes: Map<string, Quote>,
   universe: UniverseDefinition,
 ): boolean {
-  let hayPrecio = false;
-  let hayHora = false;
   for (const symbol of universe.reference.keys()) {
     const q = quotes.get(symbol);
-    if (!q) continue;
-    if (q.last !== null || q.previousClose !== null) hayPrecio = true;
-    if (q.lastTradeTime) hayHora = true;
+    if (q && (q.last !== null || q.previousClose !== null) && q.lastTradeTime) return true;
   }
-  return hayPrecio && hayHora;
+  return false;
 }
 
 /**
@@ -104,7 +99,10 @@ function panelTieneRueda(
  * rueda, y la serie histórica si está cerrada. Si BYMA no responde, no hay
  * respuesta — un error explícito antes que una curva inventada.
  */
-async function fetchQuotes(universe: UniverseDefinition): Promise<QuoteFetchResult> {
+async function fetchQuotes(
+  universe: UniverseDefinition,
+  ahora: Date,
+): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
   const presupuesto = crearPresupuesto();
 
@@ -118,8 +116,15 @@ async function fetchQuotes(universe: UniverseDefinition): Promise<QuoteFetchResu
     warnings.push(`El panel de BYMA no respondió (${(err as Error).message}).`);
   }
 
-  if (panel && panelTieneRueda(panel, universe)) {
-    return { quotes: panel, session: 'intradiaria', warnings };
+  if (panel && panelTieneDatos(panel, universe)) {
+    // El panel manda mientras tenga datos. Si el mercado ya cerró, esos datos
+    // son los del cierre —precio, variación y volumen efectivo de toda la
+    // rueda—, y sólo cambia cómo se los llama.
+    return {
+      quotes: panel,
+      session: isWithinTradingHours(ahora) ? 'intradiaria' : 'cierre',
+      warnings,
+    };
   }
 
   // Mercado cerrado: los precios son los de cierre de la última rueda.
@@ -147,7 +152,7 @@ export async function buildUniverse(
   universe: UniverseDefinition,
   now: Date = new Date(),
 ): Promise<UniverseResponse> {
-  const { quotes, session, warnings } = await fetchQuotes(universe);
+  const { quotes, session, warnings } = await fetchQuotes(universe, now);
 
   // Con el mercado cerrado la rueda de referencia no es hoy: es la última
   // rueda con datos. La liquidación T+1 y el conteo de días cuelgan de ahí,
