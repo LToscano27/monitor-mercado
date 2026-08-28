@@ -81,6 +81,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Antigüedad del dato. Va apagada: interesa cuando crece, no cuando es chica. */
+.antiguedad {
+  color: var(--tinta-3);
+  font-family: var(--fuente-ui);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Estado de la rueda. Va en tinta, no en color: el color de esta pantalla
    está reservado para la dirección del cambio de precio. */
 .estado {
