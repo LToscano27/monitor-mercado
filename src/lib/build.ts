@@ -153,13 +153,14 @@ async function fetchQuotesWithFallback(
     warnings.push(`No se pudieron traer los cierres de BYMA (${(err as Error).message}).`);
   }
 
-  // Último recurso: lo que haya quedado en el panel, avisando que no sabemos
-  // a qué momento corresponde.
+  // Último recurso: lo que haya quedado en el panel. No sabemos de qué rueda
+  // son, así que la sesión queda declarada como desconocida y la interfaz lo
+  // muestra. Llamarla "en curso" seria mentir con cara de dato.
   if (quotes) {
     warnings.push(
-      'Los precios salen del panel en vivo pero no hay hora de trade: puede que no correspondan a la rueda en curso.',
+      'Los precios salen del panel de respaldo y no traen hora de trade: no se pudo establecer a qué rueda corresponden.',
     );
-    return { quotes, source, fallbackUsed, session: 'intradiaria', warnings };
+    return { quotes, source, fallbackUsed, session: 'desconocida', warnings };
   }
   throw new Error('Ninguna fuente devolvió datos.');
 }

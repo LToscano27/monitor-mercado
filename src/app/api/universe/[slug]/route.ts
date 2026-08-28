@@ -36,6 +36,8 @@ export async function GET(
 
   try {
     const payload = await buildUniverse(universe);
+    // Una sesión desconocida es un estado degradado: se cachea corto para
+    // volver a intentar apenas la fuente se recupere.
     const maxAge = payload.session === 'cierre' ? CACHE_CERRADO : CACHE_EN_RUEDA;
     return NextResponse.json(payload, {
       headers: {

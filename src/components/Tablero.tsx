@@ -11,6 +11,12 @@ import estilos from './Tablero.module.css';
 
 const REFRESCO_MS = 30_000;
 
+const ETIQUETA_SESION: Record<UniverseResponse['session'], string> = {
+  intradiaria: 'en curso',
+  cierre: 'cerrada',
+  desconocida: 'sin confirmar',
+};
+
 interface Props {
   slug: string;
   universos: { slug: string; label: string }[];
@@ -63,6 +69,7 @@ export function Tablero({ slug, universos }: Props) {
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
     if (datos.session === 'cierre') return 'cierre de rueda';
+    if (datos.session === 'desconocida') return 'sin confirmar';
     const horas = datos.instruments
       .map((i) => i.lastTradeTime)
       .filter((h): h is string => Boolean(h));
@@ -110,7 +117,7 @@ export function Tablero({ slug, universos }: Props) {
                 <span className={estilos.selloValor}>
                   {fechaCorta(datos.tradeDate)}
                   <span className={estilos.estado} data-sesion={datos.session}>
-                    {datos.session === 'cierre' ? 'cerrada' : 'en curso'}
+                    {ETIQUETA_SESION[datos.session]}
                   </span>
                 </span>
               </div>
