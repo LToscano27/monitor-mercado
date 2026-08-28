@@ -163,9 +163,54 @@ export async function buildUniverse(
   const tradeDate = parseIsoDate(tradeDateIso);
   const settlement = settlementDate(tradeDate);
 
+  /*
+   * El universo vigente se arma en cada request, no se hereda del archivo.
+   *
+   * Las especies que ya vencieron salen solas: el lunes que S31G6 liquide, deja
+   * de existir para la curva sin que nadie toque nada. Y las que aparecieron en
+   * el panel y no están en la referencia se resuelven contra la ficha técnica
+   * de BYMA y entran con todas las funciones, también solas.
+   *
+   * La referencia versionada queda como base y como lugar de los overrides
+   * manuales, no como lista cerrada.
+   */
+  const vigentes = new Map<string, ZeroCouponReference>();
+  for (const [symbol, ref] of universe.reference) {
+    if (ref.maturityDate > tradeDateIso) vigentes.set(symbol, ref);
+  }
+
+  const desconocidos = [...quotes.entries()]
+    .filter(
+      ([symbol, quote]) =>
+        BASE_TICKER.test(symbol) &&
+        !vigentes.has(symbol) &&
+        !universe.reference.has(symbol) &&
+        !universe.knownNonMembers.has(symbol) &&
+        quote.maturityDate !== null &&
+        quote.maturityDate > tradeDateIso,
+    )
+    .map(([symbol]) => symbol);
+
+  if (desconocidos.length > 0) {
+    try {
+      const { nuevas, sinResolver } = await universe.descubrir(desconocidos);
+      for (const ref of nuevas) vigentes.set(ref.symbol, ref);
+      if (nuevas.length > 0) {
+        warnings.push(
+          `Especies nuevas incorporadas automáticamente: ${nuevas.map((n) => n.symbol).join(', ')}.`,
+        );
+      }
+      for (const { symbol, motivo } of sinResolver) {
+        warnings.push(`No se pudo incorporar ${symbol}: ${motivo}.`);
+      }
+    } catch (err) {
+      warnings.push(`No se pudieron resolver especies nuevas (${(err as Error).message}).`);
+    }
+  }
+
   const instruments: InstrumentRow[] = [];
 
-  for (const [symbol, ref] of universe.reference) {
+  for (const [symbol, ref] of vigentes) {
     const maturity = parseIsoDate(ref.maturityDate);
     const quote = quotes.get(symbol);
 
@@ -275,30 +320,6 @@ export async function buildUniverse(
   }
 
   instruments.sort((a, b) => a.daysToMaturity - b.daysToMaturity);
-
-  // Un ticker vivo, con forma de especie del universo y sin clasificar, es una
-  // emisión nueva: se avisa para correr refresh:reference.
-  //
-  // "Vivo" es la parte que importa. BYMA sigue listando especies mucho después
-  // de su vencimiento —S10N5 y M10N5 vencieron en noviembre de 2025 y seguían
-  // apareciendo en el panel—, y no hay nada que clasificar en un papel muerto:
-  // ya no pertenece a ninguna curva. Si la fuente no informa vencimiento no
-  // tenemos con qué juzgarlo, y callar es mejor que avisar de más.
-  const vivoYDesconocido = ([symbol, quote]: [string, Quote]) =>
-    BASE_TICKER.test(symbol) &&
-    !universe.reference.has(symbol) &&
-    !universe.knownNonMembers.has(symbol) &&
-    quote.maturityDate !== null &&
-    quote.maturityDate > tradeDateIso;
-
-  const sinClasificar = [...quotes.entries()]
-    .filter((entrada) => vivoYDesconocido(entrada) && !universe.unresolved.includes(entrada[0]))
-    .map(([symbol]) => symbol);
-  if (sinClasificar.length > 0) {
-    warnings.push(
-      `Tickers sin clasificar en la referencia: ${sinClasificar.join(', ')}. Correr "npm run refresh:reference".`,
-    );
-  }
 
   return {
     universe: universe.slug,

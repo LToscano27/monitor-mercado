@@ -30,6 +30,23 @@ export interface UniverseDefinition {
   knownNonMembers: ReadonlyMap<string, string>;
   /** Tickers candidatos que la referencia no pudo resolver. */
   unresolved: readonly string[];
+  /**
+   * Incorpora especies que aparecieron en el panel y no están en la
+   * referencia versionada.
+   *
+   * El Tesoro emite seguido, y una LECAP nueva tiene que entrar sola: esperar
+   * a que alguien corra un script deja la curva incompleta justo cuando hay
+   * novedades. Recibe los símbolos desconocidos y devuelve los que pertenecen
+   * al universo, ya resueltos.
+   */
+  descubrir(
+    simbolos: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<{
+    nuevas: ZeroCouponReference[];
+    /** Los que no se pudieron resolver, cada uno con su motivo. */
+    sinResolver: { symbol: string; motivo: string }[];
+  }>;
   valuate(
     ref: ZeroCouponReference,
     quote: Quote,
