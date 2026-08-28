@@ -241,8 +241,32 @@ export async function buildUniverse(
       });
     }
 
-    const valuation = universe.valuate(ref, quote, price, settlement);
-    if (price !== null && valuation === null) {
+    /**
+     * Un precio sin fecha no se puede descontar.
+     *
+     * Con la sesión sin confirmar no sabemos a qué rueda corresponde el
+     * precio, y el rendimiento sale de comparar ese precio contra el pago
+     * final a lo largo de los días que faltan. Descontar el precio de ayer
+     * sobre el horizonte de hoy infla las tasas, y las infla más cuanto más
+     * corto el plazo: alcanza para dar vuelta la curva entera e inventar una
+     * inversión que el mercado no tiene.
+     *
+     * Preferimos no publicar rendimiento antes que publicar uno inventado.
+     */
+    const sesionConfirmada = session !== 'desconocida';
+    if (!sesionConfirmada && price !== null) {
+      flags.push({
+        code: 'UNKNOWN_PRICE_DATE',
+        level: 'bad',
+        message:
+          'No se pudo establecer a qué rueda corresponde el precio, así que no se calcula el rendimiento: descontarlo contra una fecha que puede no ser la suya daría una tasa falsa.',
+      });
+    }
+
+    const valuation = sesionConfirmada
+      ? universe.valuate(ref, quote, price, settlement)
+      : null;
+    if (sesionConfirmada && price !== null && valuation === null) {
       flags.push({
         code: 'MISSING_REFERENCE',
         level: 'bad',

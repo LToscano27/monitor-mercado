@@ -3,6 +3,16 @@
   width: 100%;
 }
 
+.vacio {
+  max-width: 52ch;
+  margin: 0;
+  padding: 72px 0;
+  color: var(--tinta-2);
+  font-size: 13px;
+  text-align: center;
+  margin-inline: auto;
+}
+
 .lienzo {
   display: block;
   overflow: visible;
