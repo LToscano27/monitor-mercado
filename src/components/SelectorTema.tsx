@@ -3,36 +3,38 @@
 import { useEffect, useState } from 'react';
 import estilos from './Tablero.module.css';
 
-type Tema = 'system' | 'light' | 'dark';
+type Tema = 'light' | 'dark';
 
 const OPCIONES: { valor: Tema; etiqueta: string; titulo: string }[] = [
   { valor: 'light', etiqueta: 'Claro', titulo: 'Modo claro' },
-  { valor: 'system', etiqueta: 'Auto', titulo: 'Seguir el sistema' },
   { valor: 'dark', etiqueta: 'Oscuro', titulo: 'Modo oscuro' },
 ];
 
 export function SelectorTema() {
-  const [tema, setTema] = useState<Tema>('system');
+  const [tema, setTema] = useState<Tema>('light');
 
+  // Sin elección guardada arranca en lo que use el sistema, pero se muestra
+  // resuelto: uno de los dos botones siempre está activo. Recién al tocar uno
+  // se estampa el tema y se guarda.
   useEffect(() => {
+    let guardado: string | null = null;
     try {
-      const guardado = localStorage.getItem('tema');
-      if (guardado === 'light' || guardado === 'dark') setTema(guardado);
+      guardado = localStorage.getItem('tema');
     } catch {
-      /* almacenamiento bloqueado: queda en 'system' */
+      /* almacenamiento bloqueado */
     }
+    if (guardado === 'light' || guardado === 'dark') {
+      setTema(guardado);
+      return;
+    }
+    setTema(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   }, []);
 
   const elegir = (valor: Tema) => {
     setTema(valor);
+    document.documentElement.dataset.theme = valor;
     try {
-      if (valor === 'system') {
-        localStorage.removeItem('tema');
-        delete document.documentElement.dataset.theme;
-      } else {
-        localStorage.setItem('tema', valor);
-        document.documentElement.dataset.theme = valor;
-      }
+      localStorage.setItem('tema', valor);
     } catch {
       /* sin persistencia, el cambio vale para esta sesión */
     }
