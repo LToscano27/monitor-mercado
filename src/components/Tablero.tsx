@@ -9,7 +9,7 @@ import { SelectorTema } from './SelectorTema';
 import { fechaCorta, guion } from '@/lib/format';
 import estilos from './Tablero.module.css';
 
-const REFRESCO_MS = 30_000;
+const REFRESCO_MS = 60_000;
 
 const ETIQUETA_SESION: Record<UniverseResponse['session'], string> = {
   intradiaria: 'en curso',
@@ -41,7 +41,9 @@ export function Tablero({ slug, universos }: Props) {
   const traer = useCallback(async () => {
     setCargando(true);
     try {
-      const res = await fetch(`/api/universe/${slug}`, { cache: 'no-store' });
+      // Sin 'no-store': así el CDN puede servir la respuesta cacheada y la
+      // función —y con ella la fuente— sólo se toca cuando el cache vence.
+      const res = await fetch(`/api/universe/${slug}`);
       if (!res.ok) throw new Error(`El servidor respondió ${res.status}`);
       setDatos((await res.json()) as UniverseResponse);
       setError(null);

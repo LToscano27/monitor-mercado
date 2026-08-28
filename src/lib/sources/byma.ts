@@ -1,4 +1,13 @@
 import type { Quote } from '../types';
+import { memo } from '../cache';
+
+/** Identificarse es de buena educación con una API pública sin key. */
+const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
+
+/** Los paneles refrescan cada ~20s en origen; pedirlos más seguido es castigar. */
+const TTL_PANEL_MS = 15_000;
+/** Un cierre ya no cambia. Se retiene largo y se revisa cada tanto por si hay rueda nueva. */
+const TTL_CIERRE_MS = 15 * 60_000;
 
 const BASE =
   'https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free';
@@ -52,7 +61,7 @@ export interface BymaFicha {
 async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${BASE}/${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify(body),
     signal,
     cache: 'no-store',
@@ -108,7 +117,9 @@ export async function fetchQuotes(
   panels: readonly BymaPanel[],
   signal?: AbortSignal,
 ): Promise<Map<string, Quote>> {
-  const panelResults = await Promise.all(panels.map((p) => fetchPanel(p, signal)));
+  const panelResults = await Promise.all(
+    panels.map((p) => memo(`panel:${p}`, TTL_PANEL_MS, () => fetchPanel(p, signal))),
+  );
   const quotes = new Map<string, Quote>();
   for (const items of panelResults) {
     for (const item of items) {
@@ -200,6 +211,7 @@ export async function fetchHistory(
 
   // Timeout propio por pedido: un instrumento lento no puede arrastrar al lote.
   const res = await fetch(`${BASE}/chart/historical-series/history?${query}`, {
+    headers: { 'User-Agent': USER_AGENT },
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
       : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -224,7 +236,16 @@ export async function fetchHistory(
  * lo que necesita la variación del día. No hay book ni hora de trade: fuera de
  * rueda esos datos no existen, y no se inventan.
  */
-export async function fetchClosingQuotes(
+export function fetchClosingQuotes(
+  symbols: readonly string[],
+  signal?: AbortSignal,
+): Promise<Map<string, Quote>> {
+  return memo(`cierres:${symbols.join(',')}`, TTL_CIERRE_MS, () =>
+    traerCierres(symbols, signal),
+  );
+}
+
+async function traerCierres(
   symbols: readonly string[],
   signal?: AbortSignal,
 ): Promise<Map<string, Quote>> {

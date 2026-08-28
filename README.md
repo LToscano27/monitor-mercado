@@ -65,6 +65,27 @@ abierto es paper trading, con precios que no son de mercado real.
 El fetch es server-side por diseño: además del CORS, todos los cálculos viven
 en el backend. El frontend consume `/api/universe/[slug]` y sólo dibuja.
 
+### Cuidar la fuente
+
+BYMA no publica su rate limit pero lo aplica, y lo aplica callado: ante
+demasiados pedidos deja de completar el handshake TCP y descarta los paquetes
+sin RST. Desde afuera se parece exactamente a una caída del servicio — DNS
+resuelve, `www.byma.com.ar` responde 200, y `open.bymadata.com.ar` simplemente
+no contesta. Salir de ese estado lleva rato, y cada reintento lo renueva.
+
+Tres defensas, en capas:
+
+1. **Cache del CDN.** El endpoint manda `s-maxage`, y el cliente **no** pide con
+   `no-store`: si lo hiciera, cada refresco de cada pestaña saltearía el cache y
+   dispararía la función.
+2. **Cache en el proceso** (`src/lib/cache.ts`). Los paneles se retienen 15 s y
+   los cierres 15 min, con deduplicación de pedidos en vuelo. En la rama de
+   cierre una vuelta completa son 13 pedidos: sin esto, uno por refresco.
+3. **Cortacircuitos.** Tras un fallo, esa clave queda en pausa 45 s y los
+   pedidos fallan rápido sin tocar la red.
+
+Medido: primera vuelta 24 pedidos, las dos siguientes 0.
+
 ### Mercado abierto y mercado cerrado
 
 Fuera del horario de rueda BYMA **no deja de responder**: devuelve el panel
