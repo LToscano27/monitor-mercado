@@ -4,6 +4,8 @@ Curva, precios y variación diaria del universo de **tasa fija** del Tesoro
 argentino: LECAPs y BONCAPs, instrumentos cero cupón en pesos que capitalizan y
 pagan todo al vencimiento.
 
+**En producción: <https://monitor-mercado-4net.vercel.app>**
+
 La arquitectura está preparada para sumar después las curvas CER y dólar
 linked: el universo es un parámetro, no algo hardcodeado.
 
