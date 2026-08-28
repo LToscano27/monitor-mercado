@@ -10,13 +10,6 @@
   font-size: 12.5px;
 }
 
-.leyenda {
-  padding: 0 0 12px;
-  text-align: left;
-  font-size: 12px;
-  color: var(--tinta-2);
-}
-
 .tabla thead th {
   position: sticky;
   top: 0;
@@ -141,13 +134,6 @@
 
 .marca[data-nivel='bad'] .marcaPunto {
   background: var(--tinta-3);
-}
-
-.contado {
-  margin-left: 4px;
-  color: var(--tinta-3);
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
 }
 
 .sinMarca {

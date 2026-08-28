@@ -188,12 +188,6 @@ export function PanelCurva({
           {etiquetaMetrica}
         </text>
 
-        {ajuste && (
-          <text x={geometria.x1} y={geometria.curvaSup - 6} className={estilos.notaAjuste}>
-            {`ajuste log · R² ${ajuste.r2.toFixed(2)} · n ${ajuste.n}`}
-          </text>
-        )}
-
         {instrumentoActivo && (
           <line
             x1={x(instrumentoActivo.daysToMaturity)}

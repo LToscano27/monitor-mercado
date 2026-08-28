@@ -50,12 +50,6 @@
   color: var(--tinta-2);
 }
 
-.cuenta {
-  color: var(--tinta-3);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
 .restaurar {
   padding: 3px 9px;
   background: none;
