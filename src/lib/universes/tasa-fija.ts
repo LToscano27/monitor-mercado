@@ -1,6 +1,6 @@
 import { DEFAULT_THRESHOLDS } from '../quality';
 import { fetchFicha } from '../sources/byma';
-import { memo } from '../cache';
+import { estaCacheado, memo } from '../cache';
 import { clasificar, referenciaDesdeFicha } from './tasa-fija-clasificador';
 import { valuate } from '../pricing/zero-coupon';
 import type { ZeroCouponReference } from '../types';
@@ -30,8 +30,15 @@ const TTL_FICHA_MS = 24 * 60 * 60_000;
  */
 const TTL_FICHA_AUSENTE_MS = 10 * 60_000;
 
-/** Tope de fichas por request, para no castigar a la fuente si aparecen muchas. */
-const MAX_DESCUBRIMIENTOS = 4;
+/**
+ * Tope de fichas que se van a buscar a la red en un mismo request, para no
+ * castigar a la fuente si aparecen varias especies juntas.
+ *
+ * Cuenta sólo las que no están en cache. Si contara todas, con más especies
+ * nuevas que el tope las últimas nunca entrarían: el orden es estable, así que
+ * serían siempre las mismas las que quedan afuera.
+ */
+const MAX_FICHAS_NUEVAS = 4;
 
 export const tasaFija: UniverseDefinition = {
   slug: 'tasa-fija',
@@ -48,12 +55,19 @@ export const tasaFija: UniverseDefinition = {
   async descubrir(simbolos, signal) {
     const nuevas: ZeroCouponReference[] = [];
     const sinResolver: { symbol: string; motivo: string }[] = [];
+    let pedidosALaRed = 0;
 
-    for (const symbol of simbolos.slice(0, MAX_DESCUBRIMIENTOS)) {
+    for (const symbol of simbolos) {
+      const clave = `ficha:${symbol}`;
+      if (!estaCacheado(clave)) {
+        if (pedidosALaRed >= MAX_FICHAS_NUEVAS) continue;
+        pedidosALaRed += 1;
+      }
+
       let ficha;
       try {
         ficha = await memo(
-          `ficha:${symbol}`,
+          clave,
           TTL_FICHA_MS,
           () => fetchFicha(symbol, signal),
           TTL_FICHA_AUSENTE_MS,

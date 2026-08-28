@@ -39,6 +39,12 @@ const enPausa = new Map<string, number>();
  *   licitada, cachear ese vacío un día entero la deja afuera de la curva
  *   hasta el día siguiente aunque la publiquen diez minutos después.
  */
+/** ¿Esta clave se puede responder sin tocar la red? */
+export function estaCacheado(clave: string): boolean {
+  const entrada = entradas.get(clave);
+  return entrada !== undefined && entrada.vence > Date.now();
+}
+
 export async function memo<T>(
   clave: string,
   ttlMs: number,
