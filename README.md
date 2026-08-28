@@ -164,20 +164,24 @@ una unión de puntos: unir los puntos con segmentos rectos no describe ninguna
 curva de rendimientos. El R² y el n van dibujados sobre el gráfico para que se
 sepa cuánto confiar en el trazo.
 
-**Qué entra al ajuste** se elige: cada bono se saca o se vuelve a poner desde la
-lista de fichas o haciendo clic en su punto, y la regresión se recalcula. Un
-bono sacado no se esconde — queda como punto hueco y atenuado — así se puede
-comparar la curva con y sin él. Los instrumentos con marcas de calidad quedan
-fuera del ajuste siempre.
+**Qué entra a la curva** se elige: cada bono se saca o se vuelve a poner desde
+la lista de fichas o haciendo clic en su punto. Al sacarlo desaparece del
+gráfico — punto y etiqueta — y la regresión se recalcula con los que queden.
+Los instrumentos con marcas de calidad quedan fuera del ajuste siempre.
 
 ## Diseño
 
 Tokens en `src/app/globals.css`. La regla rectora: **el único color saturado de
 la pantalla es la dirección del cambio de precio**. La curva, los ejes y el
-texto van en tinta. Los valores de `--sube` y `--baja` están validados contra
-las dos superficies reales (banda de luminosidad, croma, separación bajo
-daltonismo, piso de visión normal y contraste). No cambiarlos sin volver a
-validar.
+texto van en tinta.
+
+`--sube` y `--baja` son verde y rojo, la convención del mercado, y son colores
+de estado: fijos en los dos modos. Pasan banda de luminosidad, croma, piso de
+visión normal y contraste contra las dos superficies reales. **No pasan la
+separación bajo daltonismo**: verde y rojo miden ΔE 4,1 en deuteranopía, un
+problema inherente al par. La mitigación es que acá el color es redundante —
+todo número lleva su signo `+` o `−` explícito, así que el sentido nunca
+depende del hue. No sacar los signos.
 
 Los instrumentos marcados se dibujan con punto hueco y anillo punteado — la
 forma los distingue, no el color — y la razón aparece al pasar por encima.
