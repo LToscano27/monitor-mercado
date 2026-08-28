@@ -31,10 +31,19 @@ const entradas = new Map<string, Entrada<unknown>>();
 const PAUSA_TRAS_FALLO_MS = 45_000;
 const enPausa = new Map<string, number>();
 
+/**
+ * @param ttlMs      cuánto se retiene una respuesta con contenido.
+ * @param ttlSiVacio cuánto se retiene una respuesta vacía (null/undefined).
+ *   Existe porque "todavía no hay dato" y "el dato es este" no merecen la
+ *   misma memoria: si BYMA aún no publicó la ficha de una especie recién
+ *   licitada, cachear ese vacío un día entero la deja afuera de la curva
+ *   hasta el día siguiente aunque la publiquen diez minutos después.
+ */
 export async function memo<T>(
   clave: string,
   ttlMs: number,
   fn: () => Promise<T>,
+  ttlSiVacio = ttlMs,
 ): Promise<T> {
   const ahora = Date.now();
 
@@ -56,7 +65,12 @@ export async function memo<T>(
   entradas.set(clave, { vence: ahora + ttlMs, valor });
 
   try {
-    return await valor;
+    const resuelto = await valor;
+    if (resuelto === null || resuelto === undefined) {
+      const entrada = entradas.get(clave);
+      if (entrada?.valor === valor) entrada.vence = Date.now() + ttlSiVacio;
+    }
+    return resuelto;
   } catch (err) {
     // Un fallo no se cachea como dato, pero sí abre la pausa.
     if (entradas.get(clave)?.valor === valor) entradas.delete(clave);
