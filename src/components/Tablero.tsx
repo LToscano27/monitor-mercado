@@ -185,7 +185,7 @@ export function Tablero({ slug, universos }: Props) {
                 <p className={estilos.panelBajada}>
                   Cada punto es un instrumento. El trazo es un ajuste logarítmico sobre
                   los bonos elegidos: sacá cualquiera de la lista o hacé clic en su punto
-                  y la curva se recalcula.
+                  y sale del gráfico, con la curva reajustada a los que queden.
                 </p>
               </div>
               <SelectorInstrumentos

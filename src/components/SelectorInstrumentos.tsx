@@ -13,9 +13,9 @@ interface Props {
 }
 
 /**
- * Qué bonos entran al ajuste. Sacar un papel no lo esconde: lo deja en el
- * gráfico como punto hueco, fuera de la regresión, para poder comparar la
- * curva con y sin él y volver a meterlo de un clic.
+ * Qué bonos entran al gráfico. Sacar un papel lo quita del todo — punto y
+ * etiqueta — y la curva se reajusta con los que quedan. La ficha tachada es
+ * lo único que queda de él, y con un clic vuelve.
  */
 export function SelectorInstrumentos({
   instrumentos,
@@ -30,7 +30,7 @@ export function SelectorInstrumentos({
 
   return (
     <div className={estilos.barra}>
-      <span className={estilos.titulo}>En el ajuste</span>
+      <span className={estilos.titulo}>En la curva</span>
 
       <div className={estilos.fichas} role="group" aria-label="Bonos incluidos en el ajuste">
         {instrumentos.map((i) => {

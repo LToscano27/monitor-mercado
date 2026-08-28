@@ -97,11 +97,6 @@
   stroke-width: 1.5;
 }
 
-/* Sacado a mano: sigue visible para poder comparar la curva con y sin él. */
-.puntoFuera {
-  opacity: 0.45;
-}
-
 .punto {
   cursor: pointer;
 }

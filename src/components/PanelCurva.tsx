@@ -55,12 +55,18 @@ export function PanelCurva({
     setAncho(Math.max(360, nodo.getBoundingClientRect().width));
   }, []);
 
+  /**
+   * Lo que se dibuja. Un bono sacado del ajuste sale del gráfico entero —
+   * punto y etiqueta —, no queda atenuado: la escala se recalcula con los que
+   * quedan y el gráfico muestra sólo la curva elegida. Vuelve con su ficha.
+   */
   const visibles = useMemo(
     () =>
-      ocultarMarcados
-        ? instrumentos.filter((i) => i.quality.level === 'ok')
-        : instrumentos,
-    [instrumentos, ocultarMarcados],
+      instrumentos.filter(
+        (i) =>
+          !excluidos.has(i.ticker) && (!ocultarMarcados || i.quality.level === 'ok'),
+      ),
+    [instrumentos, ocultarMarcados, excluidos],
   );
 
   const geometria = useMemo(() => {
@@ -90,22 +96,17 @@ export function PanelCurva({
   const { x, y } = geometria;
 
   /**
-   * Entran al ajuste los instrumentos sin marcas de calidad que además no
-   * hayan sido sacados a mano. La curva se recalcula con lo que quede.
+   * Entran al ajuste los instrumentos dibujados que no tengan marcas de
+   * calidad. La curva se recalcula con lo que quede.
    */
   const ajuste = useMemo(
     () =>
       regresionLogaritmica(
         visibles
-          .filter(
-            (i) =>
-              i.quality.level === 'ok' &&
-              i[metrica] !== null &&
-              !excluidos.has(i.ticker),
-          )
+          .filter((i) => i.quality.level === 'ok' && i[metrica] !== null)
           .map((i) => ({ dias: i.daysToMaturity, valor: i[metrica] as number })),
       ),
-    [visibles, metrica, excluidos],
+    [visibles, metrica],
   );
 
   const trazo = useMemo(() => {
@@ -199,7 +200,6 @@ export function PanelCurva({
           const cx = x(i.daysToMaturity);
           const cy = y(v);
           const marcado = i.quality.level !== 'ok';
-          const fuera = excluidos.has(i.ticker);
           const esActivo = i.ticker === activo;
           const arriba = idx % 2 === 0;
 
@@ -207,9 +207,8 @@ export function PanelCurva({
             <g
               key={i.ticker}
               tabIndex={0}
-              role="checkbox"
-              aria-checked={!fuera}
-              aria-label={`${i.ticker}, vence ${fechaCorta(i.maturityDate)}, ${etiquetaMetrica} ${pct(v)}. ${fuera ? 'Fuera del ajuste' : 'En el ajuste'}`}
+              role="button"
+              aria-label={`${i.ticker}, vence ${fechaCorta(i.maturityDate)}, ${etiquetaMetrica} ${pct(v)}. Activar para sacarlo de la curva`}
               onFocus={() => setActivo(i.ticker)}
               onBlur={() => setActivo(null)}
               onClick={() => onToggle(i.ticker)}
@@ -219,7 +218,7 @@ export function PanelCurva({
                   onToggle(i.ticker);
                 }
               }}
-              className={`${estilos.punto} ${fuera ? estilos.puntoFuera : ''}`}
+              className={estilos.punto}
             >
               {/* Blanco de impacto generoso: un punto de 9 px no se acierta. */}
               <circle cx={cx} cy={cy} r={16} fill="transparent" />
@@ -227,7 +226,7 @@ export function PanelCurva({
                 cx={cx}
                 cy={cy}
                 r={RADIO_PUNTO}
-                className={marcado || fuera ? estilos.puntoHueco : estilos.puntoPleno}
+                className={marcado ? estilos.puntoHueco : estilos.puntoPleno}
                 strokeDasharray={marcado ? '2 2' : undefined}
               />
               {esActivo && (
@@ -275,7 +274,6 @@ export function PanelCurva({
         <Globo
           instrumento={instrumentoActivo}
           metrica={metrica}
-          fuera={excluidos.has(instrumentoActivo.ticker)}
           izquierda={x(instrumentoActivo.daysToMaturity)}
           ancho={ancho}
         />
@@ -287,13 +285,11 @@ export function PanelCurva({
 function Globo({
   instrumento: i,
   metrica,
-  fuera,
   izquierda,
   ancho,
 }: {
   instrumento: InstrumentRow;
   metrica: Metrica;
-  fuera: boolean;
   izquierda: number;
   ancho: number;
 }) {
@@ -332,11 +328,8 @@ function Globo({
         <Fila etiqueta="Último trade" valor={i.lastTradeTime ?? guion} />
       </dl>
 
-      {(fuera || i.quality.flags.length > 0) && (
+      {i.quality.flags.length > 0 && (
         <ul className={estilos.globoAvisos}>
-          {fuera && (
-            <li data-nivel="warn">Fuera del ajuste. Clic para volver a incluirlo.</li>
-          )}
           {i.quality.flags.map((f) => (
             <li key={f.code} data-nivel={f.level}>
               {f.message}
