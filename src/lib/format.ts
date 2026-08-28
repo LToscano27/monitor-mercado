@@ -32,11 +32,6 @@ export function pct(value: number | null, digits = DECIMALES): string {
   return `${conComa(value * 100, digits)}%`;
 }
 
-export function pctPlano(value: number | null, digits = DECIMALES): string {
-  if (value === null || !Number.isFinite(value)) return guion;
-  return `${conComa(value, digits)}%`;
-}
-
 /** Signo menos tipográfico (−), no el guion ASCII: alinea con las cifras. */
 export function pctFirmado(value: number | null, digits = DECIMALES): string {
   if (value === null || !Number.isFinite(value)) return guion;
@@ -79,17 +74,3 @@ export function fechaCorta(iso: string): string {
   return `${d} ${MESES[m - 1]} ${String(y).slice(2)}`;
 }
 
-/** '2026-11-13' -> '13 de noviembre de 2026' */
-export function fechaLarga(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const nombres = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-  ];
-  return `${d} de ${nombres[m - 1]} de ${y}`;
-}
-
-export function horaDeTimestamp(iso: string | null): string {
-  if (!iso) return guion;
-  return iso.slice(11, 19);
-}

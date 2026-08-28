@@ -4,6 +4,9 @@ import { memo } from '../cache';
 /** Identificarse es de buena educación con una API pública sin key. */
 const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
 
+/** Techo por pedido individual a BYMA. */
+const REQUEST_TIMEOUT_MS = 7_000;
+
 /** Los paneles refrescan cada ~20s en origen; pedirlos más seguido es castigar. */
 const TTL_PANEL_MS = 15_000;
 /** Un cierre ya no cambia. Se retiene largo y se revisa cada tanto por si hay rueda nueva. */
@@ -68,11 +71,16 @@ export interface BymaFicha {
 }
 
 async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  // Timeout propio, además del que traiga quien llama. Las fichas se piden
+  // fuera del presupuesto del request, así que sin esto un pedido colgado se
+  // come el maxDuration de la función y devuelve 504.
   const res = await fetch(`${BASE}/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
     body: JSON.stringify(body),
-    signal,
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+      : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`BYMA ${path} respondió ${res.status}`);
@@ -190,8 +198,6 @@ export interface Cierre {
 
 /** Los históricos exigen el sufijo ' 24HS'. Sin él la API responde 400. */
 const SUFIJO_24HS = ' 24HS';
-
-const REQUEST_TIMEOUT_MS = 7_000;
 
 /**
  * Un fallo de red transitorio no puede hacer desaparecer un instrumento de la

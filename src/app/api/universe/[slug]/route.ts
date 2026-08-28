@@ -16,8 +16,13 @@ export const maxDuration = 30;
 
 /** En rueda los precios refrescan cada ~20s en la fuente. */
 const CACHE_EN_RUEDA = 20;
-/** Con el mercado cerrado los cierres ya no cambian: se cachean fuerte. */
-const CACHE_CERRADO = 600;
+/**
+ * Con el mercado cerrado los precios ya no cambian, pero el cache no puede ser
+ * largo: la sesión pasa a "en curso" sola al abrir la rueda, y un cache de diez
+ * minutos dejaría la pantalla anunciando mercado cerrado un rato después de la
+ * apertura. Un minuto alcanza para descargar la fuente sin que se note.
+ */
+const CACHE_CERRADO = 60;
 const STALE_WHILE_REVALIDATE = 60;
 
 export async function GET(

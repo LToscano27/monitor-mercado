@@ -33,6 +33,12 @@ const PRESUPUESTO_MS = 18_000;
 const PANEL_TIMEOUT_MS = 5_000;
 /** La serie de cierre son ~11 pedidos en lotes; se le deja lo que quede. */
 const CLOSING_TIMEOUT_MAX_MS = 12_000;
+/**
+ * Techo para resolver especies nuevas. Corre fuera del presupuesto de las
+ * cotizaciones, así que necesita su propio límite: sin él, una ficha colgada
+ * se comía el maxDuration de la función y el request terminaba en 504.
+ */
+const DESCUBRIMIENTO_TIMEOUT_MS = 6_000;
 /** Debajo de esto no vale la pena arrancar un intento. */
 const MINIMO_UTIL_MS = 1_500;
 
@@ -129,10 +135,19 @@ async function fetchQuotes(
   }
 
   // Mercado cerrado: los precios son los de cierre de la última rueda.
+  //
+  // Se piden sólo las especies vivas. La referencia acumula las que ya
+  // vencieron, y pedir la serie histórica de un papel muerto es un pedido de
+  // más a una fuente que castiga el exceso, para un dato que se descarta.
+  const hoyIso = toIsoDate(marketToday(momentoVisible(ahora)));
+  const vivas = [...universe.reference.values()]
+    .filter((ref) => ref.maturityDate > hoyIso)
+    .map((ref) => ref.symbol);
+
   let cierres = new Map<string, Quote>();
   try {
     cierres = await presupuesto.correr(
-      (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
+      (signal) => byma.fetchClosingQuotes(vivas, signal),
       Math.min(CLOSING_TIMEOUT_MAX_MS, presupuesto.restante()),
     );
   } catch (err) {
@@ -199,7 +214,10 @@ export async function buildUniverse(
 
   if (desconocidos.length > 0) {
     try {
-      const { nuevas, sinResolver } = await universe.descubrir(desconocidos);
+      const { nuevas, sinResolver } = await universe.descubrir(
+        desconocidos,
+        AbortSignal.timeout(DESCUBRIMIENTO_TIMEOUT_MS),
+      );
       for (const ref of nuevas) vigentes.set(ref.symbol, ref);
       if (nuevas.length > 0) {
         warnings.push(

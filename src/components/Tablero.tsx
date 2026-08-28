@@ -184,7 +184,7 @@ export function Tablero({ slug, universos }: Props) {
                 </span>
               </div>
               <Dato
-                etiqueta="Datos al"
+                etiqueta="Hora"
                 valor={ultimoDato ?? guion}
                 mono={datos.session !== 'cierre'}
               />
