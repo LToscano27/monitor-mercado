@@ -8,12 +8,10 @@ import {
 } from './conventions';
 import { evaluateQuote, worstLevel } from './quality';
 import * as byma from './sources/byma';
-import * as data912 from './sources/data912';
 import type {
   InstrumentRow,
   QualityFlag,
   Quote,
-  SourceId,
   UniverseResponse,
   ZeroCouponReference,
 } from './types';
@@ -22,21 +20,16 @@ import type { UniverseDefinition } from './universes/types';
 /**
  * Presupuesto total del request, por debajo del maxDuration de la función.
  *
- * La cascada puede encadenar tres intentos (panel BYMA, panel data912, serie
- * de cierres). Si cada uno usa su timeout completo la suma se pasa y Vercel
- * devuelve 504, que es la peor respuesta posible: ni datos ni explicación.
- * Con un presupuesto compartido, el último intento usa lo que sobra y siempre
- * queda tiempo para responder algo.
+ * El panel y la serie de cierres pueden encadenarse. Si cada uno usa su
+ * timeout completo la suma se pasa y Vercel devuelve 504, que es la peor
+ * respuesta posible: ni datos ni explicación. Con un presupuesto compartido,
+ * el segundo intento usa lo que sobra y siempre queda tiempo para responder.
  */
 const PRESUPUESTO_MS = 18_000;
-/** BYMA sano responde en ~2s. Si tarda más, es que no está: cortamos temprano
- *  para dejarle presupuesto al respaldo, que es el que va a tener que servir. */
+/** BYMA sano responde en ~2s. Si tarda más, cortamos y vamos a los cierres. */
 const PANEL_TIMEOUT_MS = 5_000;
-/** Techo del respaldo. Se le da lo que quede del presupuesto hasta este máximo:
- *  es la última fuente con chance de traer datos, no se la puede ahogar. */
-const RESPALDO_TIMEOUT_MAX_MS = 10_000;
-/** La serie de cierre son ~11 pedidos en lotes; necesita más aire. */
-const CLOSING_TIMEOUT_MS = 14_000;
+/** La serie de cierre son ~11 pedidos en lotes; se le deja lo que quede. */
+const CLOSING_TIMEOUT_MAX_MS = 12_000;
 /** Debajo de esto no vale la pena arrancar un intento. */
 const MINIMO_UTIL_MS = 1_500;
 
@@ -48,8 +41,6 @@ const BASE_TICKER = /^[STM][A-Z0-9]{2,3}[0-9]$/;
 
 interface QuoteFetchResult {
   quotes: Map<string, Quote>;
-  source: SourceId;
-  fallbackUsed: boolean;
   session: UniverseResponse['session'];
   warnings: string[];
 }
@@ -81,10 +72,9 @@ function crearPresupuesto(total = PRESUPUESTO_MS) {
  *     completo con todos los campos en cero, cierre anterior incluido. Un
  *     panel ceroteado no es "el mercado no operó", es "no hay rueda abierta".
  *
- *  2. Hora de algún trade. data912 sigue sirviendo el último precio conocido
- *     mucho después del cierre, sin decir de cuándo es. Sin hora de trade no
- *     hay evidencia de rueda abierta, y llamar "en curso" a un precio de ayer
- *     es peor que no mostrarlo: el lector cree que está viendo el mercado.
+ *  2. Hora de algún trade. Es la evidencia de que esos precios son de hoy.
+ *     Llamar "en curso" a un precio de ayer es peor que no mostrarlo: el
+ *     lector cree que está viendo el mercado.
  */
 function panelTieneRueda(
   quotes: Map<string, Quote>,
@@ -102,80 +92,61 @@ function panelTieneRueda(
 }
 
 /**
- * BYMA es la fuente principal: es la única que trae vencimiento, cierre
- * anterior y hora del último trade. data912 queda como respaldo — está
- * verificado que es un espejo de BYMA, así que los números no cambian, pero
- * pierde la hora del trade.
+ * BYMA es la única fuente, y eso es deliberado.
  *
- * Con el mercado cerrado ninguno de los dos paneles sirve, y ahí se va a la
- * serie histórica de BYMA a buscar el cierre real de la última rueda.
+ * El respaldo que había servía el último precio conocido sin decir de cuándo
+ * era. Eso no es un dato de mercado: es un número con forma de dato.
+ * Descontarlo contra una fecha de liquidación inflaba las tasas del tramo
+ * corto y llegó a dar vuelta la curva entera.
+ *
+ * Quedan dos caminos, los dos con fecha conocida: el panel en vivo si hay
+ * rueda, y la serie histórica si está cerrada. Si BYMA no responde, no hay
+ * respuesta — un error explícito antes que una curva inventada.
  */
-async function fetchQuotesWithFallback(
-  universe: UniverseDefinition,
-): Promise<QuoteFetchResult> {
+async function fetchQuotes(universe: UniverseDefinition): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
   const presupuesto = crearPresupuesto();
-  let quotes: Map<string, Quote> | null = null;
-  let source: SourceId = 'byma';
-  let fallbackUsed = false;
 
+  let panel: Map<string, Quote> | null = null;
   try {
-    quotes = await presupuesto.correr(
+    panel = await presupuesto.correr(
       (signal) => byma.fetchQuotes(universe.bymaPanels, signal),
       PANEL_TIMEOUT_MS,
     );
   } catch (err) {
-    warnings.push(
-      `BYMA no respondió (${(err as Error).message}); se usó data912 como respaldo.`,
-    );
-    try {
-      quotes = await presupuesto.correr(
-        (signal) => data912.fetchQuotes(universe.data912Feeds, signal),
-        Math.min(RESPALDO_TIMEOUT_MAX_MS, presupuesto.restante()),
-      );
-      source = 'data912';
-      fallbackUsed = true;
-    } catch (err2) {
-      warnings.push(`data912 tampoco respondió (${(err2 as Error).message}).`);
-    }
+    warnings.push(`El panel de BYMA no respondió (${(err as Error).message}).`);
   }
 
-  if (quotes && panelTieneRueda(quotes, universe)) {
-    return { quotes, source, fallbackUsed, session: 'intradiaria', warnings };
+  if (panel && panelTieneRueda(panel, universe)) {
+    return { quotes: panel, session: 'intradiaria', warnings };
   }
 
   // Mercado cerrado: los precios son los de cierre de la última rueda.
+  let cierres = new Map<string, Quote>();
   try {
-    const cierres = await presupuesto.correr(
+    cierres = await presupuesto.correr(
       (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
-      CLOSING_TIMEOUT_MS,
+      Math.min(CLOSING_TIMEOUT_MAX_MS, presupuesto.restante()),
     );
-    if (cierres.size > 0) {
-      return { quotes: cierres, source: 'byma', fallbackUsed: false, session: 'cierre', warnings };
-    }
-    warnings.push('La serie histórica de BYMA no devolvió cierres.');
   } catch (err) {
-    warnings.push(`No se pudieron traer los cierres de BYMA (${(err as Error).message}).`);
+    warnings.push(`La serie histórica de BYMA no respondió (${(err as Error).message}).`);
   }
 
-  // Último recurso: lo que haya quedado en el panel. No sabemos de qué rueda
-  // son, así que la sesión queda declarada como desconocida y la interfaz lo
-  // muestra. Llamarla "en curso" seria mentir con cara de dato.
-  if (quotes) {
-    warnings.push(
-      'Los precios salen del panel de respaldo y no traen hora de trade: no se pudo establecer a qué rueda corresponden.',
+  if (cierres.size === 0) {
+    // El mensaje arrastra todo lo que falló, no sólo el último paso: sin eso
+    // el error dice "no hubo cierres" y esconde que BYMA no contestó nunca.
+    throw new Error(
+      ['No se pudieron traer datos de BYMA.', ...warnings].join(' '),
     );
-    return { quotes, source, fallbackUsed, session: 'desconocida', warnings };
   }
-  throw new Error('Ninguna fuente devolvió datos.');
+  return { quotes: cierres, session: 'cierre', warnings };
 }
 
 export async function buildUniverse(
   universe: UniverseDefinition,
   now: Date = new Date(),
 ): Promise<UniverseResponse> {
-  const { quotes, source, fallbackUsed, session, warnings } =
-    await fetchQuotesWithFallback(universe);
+  const { quotes, session, warnings } = await fetchQuotes(universe);
 
   // Con el mercado cerrado la rueda de referencia no es hoy: es la última
   // rueda con datos. La liquidación T+1 y el conteo de días cuelgan de ahí,
@@ -241,32 +212,8 @@ export async function buildUniverse(
       });
     }
 
-    /**
-     * Un precio sin fecha no se puede descontar.
-     *
-     * Con la sesión sin confirmar no sabemos a qué rueda corresponde el
-     * precio, y el rendimiento sale de comparar ese precio contra el pago
-     * final a lo largo de los días que faltan. Descontar el precio de ayer
-     * sobre el horizonte de hoy infla las tasas, y las infla más cuanto más
-     * corto el plazo: alcanza para dar vuelta la curva entera e inventar una
-     * inversión que el mercado no tiene.
-     *
-     * Preferimos no publicar rendimiento antes que publicar uno inventado.
-     */
-    const sesionConfirmada = session !== 'desconocida';
-    if (!sesionConfirmada && price !== null) {
-      flags.push({
-        code: 'UNKNOWN_PRICE_DATE',
-        level: 'bad',
-        message:
-          'No se pudo establecer a qué rueda corresponde el precio, así que no se calcula el rendimiento: descontarlo contra una fecha que puede no ser la suya daría una tasa falsa.',
-      });
-    }
-
-    const valuation = sesionConfirmada
-      ? universe.valuate(ref, quote, price, settlement)
-      : null;
-    if (sesionConfirmada && price !== null && valuation === null) {
+    const valuation = universe.valuate(ref, quote, price, settlement);
+    if (price !== null && valuation === null) {
       flags.push({
         code: 'MISSING_REFERENCE',
         level: 'bad',
@@ -356,8 +303,7 @@ export async function buildUniverse(
     session,
     settlementDate: toIsoDate(settlement),
     fetchedAt: now.toISOString(),
-    source,
-    sourceFallbackUsed: fallbackUsed,
+    source: 'byma',
     conventions: CONVENTIONS_META,
     instruments,
     warnings,

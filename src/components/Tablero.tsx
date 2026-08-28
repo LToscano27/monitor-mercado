@@ -14,7 +14,6 @@ const REFRESCO_MS = 60_000;
 const ETIQUETA_SESION: Record<UniverseResponse['session'], string> = {
   intradiaria: 'en curso',
   cierre: 'cerrada',
-  desconocida: 'sin confirmar',
 };
 
 interface Props {
@@ -71,7 +70,6 @@ export function Tablero({ slug, universos }: Props) {
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
     if (datos.session === 'cierre') return 'cierre de rueda';
-    if (datos.session === 'desconocida') return 'sin confirmar';
     const horas = datos.instruments
       .map((i) => i.lastTradeTime)
       .filter((h): h is string => Boolean(h));
@@ -128,10 +126,7 @@ export function Tablero({ slug, universos }: Props) {
                 valor={ultimoDato ?? guion}
                 mono={datos.session !== 'cierre'}
               />
-              <Dato
-                etiqueta="Fuente"
-                valor={datos.sourceFallbackUsed ? `${datos.source} · respaldo` : datos.source}
-              />
+              <Dato etiqueta="Fuente" valor={datos.source} />
             </>
           )}
           <SelectorTema />

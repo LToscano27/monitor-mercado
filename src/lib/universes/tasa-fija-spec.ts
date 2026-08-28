@@ -1,5 +1,4 @@
 import type { BymaPanel } from '../sources/byma';
-import type { Data912Feed } from '../sources/data912';
 
 /**
  * Especificación del universo de tasa fija, compartida entre el runtime y el
@@ -9,8 +8,6 @@ import type { Data912Feed } from '../sources/data912';
 
 /** Las LECAPs están en `lebacs`, los BONCAPs en `public-bonds`. Hacen falta los dos. */
 export const TASA_FIJA_PANELS: readonly BymaPanel[] = ['lebacs', 'public-bonds'];
-
-export const TASA_FIJA_FEEDS: readonly Data912Feed[] = ['arg_notes', 'arg_bonds'];
 
 /**
  * Tickers base del Tesoro en pesos.

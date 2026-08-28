@@ -52,9 +52,13 @@ y sin autenticación.
 Se eligió por ser la única fuente que trae **fecha de vencimiento**, cierre
 anterior y hora del último trade, además de la ficha técnica.
 
-**Respaldo: data912** (`data912.com`). Verificado contra BYMA: sus 217 símbolos
-son un subconjunto exacto de los T+1 de BYMA con valores idénticos. No informa
-vencimiento ni hora del trade, así que esos datos salen de la referencia local.
+**No hay fuente de respaldo, y es deliberado.** Hubo una (data912) y se dio de
+baja: servía el último precio conocido sin decir de cuándo era. Un precio sin
+fecha no se puede descontar — el rendimiento sale de comparar el precio contra
+el pago final a lo largo de los días que faltan, así que un precio de ayer
+sobre el horizonte de hoy da tasas infladas, y más cuanto más corto el plazo.
+Llegó a invertir la curva entera. Si BYMA no responde, el endpoint devuelve un
+error explícito: preferimos eso a una curva inventada.
 
 **Descartada: Primary (Matba ROFEX).** Requiere credenciales y su entorno
 abierto es paper trading, con precios que no son de mercado real.
@@ -99,6 +103,8 @@ usó:
 |---|---|
 | `intradiaria` | panel en vivo, último operado de la rueda en curso |
 | `cierre` | serie histórica, cierre de la última rueda |
+
+No hay un tercer estado: o se sabe de cuándo es el precio, o no hay respuesta.
 
 Con el mercado cerrado, **la rueda de referencia no es hoy**: es la última con
 datos. La liquidación T+1 y el conteo de días cuelgan de esa fecha, no del
@@ -159,8 +165,8 @@ papel sin operar no puede deformar la curva de todos los demás.
     src/lib/conventions.ts        convenciones de cálculo — ÚNICO lugar donde viven
     src/lib/pricing/              motores de valuación (hoy: cero cupón)
     src/lib/quality.ts            reglas de calidad del dato
-    src/lib/sources/byma.ts       fuente principal
-    src/lib/sources/data912.ts    fuente de respaldo
+    src/lib/sources/byma.ts       única fuente de datos
+    src/lib/cache.ts              cache en proceso y cortacircuitos
     src/lib/universes/            registro de universos
     src/lib/reference/            datos estáticos generados, versionados
     src/lib/build.ts              orquestador: fuente + referencia + cálculo + calidad

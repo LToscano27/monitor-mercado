@@ -147,14 +147,11 @@ export function PanelCurva({
   // Sin rendimientos no hay curva. Un gráfico en blanco no dice nada; el
   // motivo, sí.
   if (conRendimiento === 0) {
-    const razon = instrumentos.find((i) =>
-      i.quality.flags.some((f) => f.code === 'UNKNOWN_PRICE_DATE'),
-    )
-      ? 'No se pudo establecer a qué rueda corresponden los precios, así que no se calculan rendimientos. Descontarlos contra una fecha que puede no ser la suya daría una curva falsa.'
-      : 'No hay rendimientos para graficar con los instrumentos elegidos.';
     return (
       <div className={estilos.envoltorio} ref={medir}>
-        <p className={estilos.vacio}>{razon}</p>
+        <p className={estilos.vacio}>
+          No hay rendimientos para graficar con los instrumentos elegidos.
+        </p>
       </div>
     );
   }
