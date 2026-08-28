@@ -1,0 +1,148 @@
+.marco {
+  overflow-x: auto;
+  border-top: 1px solid var(--regla);
+}
+
+.tabla {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.leyenda {
+  padding: 0 0 12px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--tinta-2);
+}
+
+.tabla thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--eje);
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.botonOrden {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: 0;
+  color: var(--tinta-2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.botonOrden:hover {
+  color: var(--tinta);
+}
+
+.ordenActivo {
+  color: var(--tinta);
+}
+
+.flecha {
+  display: inline-block;
+  min-width: 8px;
+  font-size: 10px;
+}
+
+.numerica {
+  text-align: right;
+}
+
+.numerica .botonOrden {
+  justify-content: flex-end;
+}
+
+.tabla tbody tr {
+  border-bottom: 1px solid var(--regla);
+}
+
+.tabla tbody tr:hover {
+  background: var(--panel-alt);
+}
+
+.tabla td,
+.tabla tbody th {
+  padding: 7px 10px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.ticker {
+  text-align: left;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.fecha {
+  color: var(--tinta-2);
+}
+
+/* Precio y TEA son las dos columnas que se leen primero. */
+.precio {
+  font-weight: 600;
+}
+
+.tabla td[data-tono='sube'] {
+  color: var(--sube);
+}
+
+.tabla td[data-tono='baja'] {
+  color: var(--baja);
+}
+
+/* Fila con dato marcado: atenuada, no escondida. */
+.tabla tbody tr[data-marcado] th,
+.tabla tbody tr[data-marcado] td {
+  color: var(--tinta-3);
+}
+
+.tabla tbody tr[data-marcado] td[data-tono='sube'],
+.tabla tbody tr[data-marcado] td[data-tono='baja'] {
+  opacity: 0.65;
+}
+
+.estadoCol {
+  text-align: left;
+  width: 96px;
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--tinta-2);
+  cursor: help;
+  border-bottom: 1px dotted var(--tinta-3);
+}
+
+.marcaPunto {
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--tinta-3);
+  border-radius: 50%;
+}
+
+.marca[data-nivel='bad'] .marcaPunto {
+  background: var(--tinta-3);
+}
+
+.sinMarca {
+  color: var(--tinta-3);
+}

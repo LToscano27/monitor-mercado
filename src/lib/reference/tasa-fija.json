@@ -1,0 +1,310 @@
+{
+  "generatedAt": "2026-08-27T23:25:53.278Z",
+  "source": "BYMA ficha técnica (bnown/fichatecnica/especies/general)",
+  "instruments": [
+    {
+      "symbol": "S13N6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 13 DE NOVIEMBRE DE 2026",
+      "isin": "AR0087656622",
+      "issueDate": "2026-06-30",
+      "maturityDate": "2026-11-13",
+      "issueTem": 0.021,
+      "temSource": "manual"
+    },
+    {
+      "symbol": "S15S6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 15 DE SEPTIEMBRE DE 2026",
+      "isin": "AR0614758420",
+      "issueDate": "2026-05-29",
+      "maturityDate": "2026-09-15",
+      "issueTem": 0.0199,
+      "temSource": "manual"
+    },
+    {
+      "symbol": "S16O6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 16 DE OCTUBRE DE 2026",
+      "isin": "AR0183520128",
+      "issueDate": "2026-07-31",
+      "maturityDate": "2026-10-16",
+      "issueTem": 0.020499999999999997,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "S30N6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE NOVIEMBRE DE 2026",
+      "isin": "AR0451031345",
+      "issueDate": "2025-12-15",
+      "maturityDate": "2026-11-30",
+      "issueTem": 0.023,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "S30O6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE OCTUBRE DE 2026",
+      "isin": "AR0475783251",
+      "issueDate": "2025-10-31",
+      "maturityDate": "2026-10-30",
+      "issueTem": 0.0255,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "S30S6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE SEPTIEMBRE DE 2026",
+      "isin": "AR0379015875",
+      "issueDate": "2026-03-16",
+      "maturityDate": "2026-09-30",
+      "issueTem": 0.0253,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "S31G6",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 31 DE AGOSTO DE 2026",
+      "isin": "AR0960697990",
+      "issueDate": "2025-11-10",
+      "maturityDate": "2026-08-31",
+      "issueTem": 0.025,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "T15E7",
+      "name": "BONO DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 15 DE ENERO DE 2027",
+      "isin": "AR0350916307",
+      "issueDate": "2025-01-31",
+      "maturityDate": "2027-01-15",
+      "issueTem": 0.020499999999999997,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "T30A7",
+      "name": "BONO DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE ABRIL DE 2027",
+      "isin": "AR0224546884",
+      "issueDate": "2025-10-31",
+      "maturityDate": "2027-04-30",
+      "issueTem": 0.0255,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "T30J7",
+      "name": "BONO DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE JUNIO 2027",
+      "isin": "AR0987861058",
+      "issueDate": "2026-01-16",
+      "maturityDate": "2027-06-30",
+      "issueTem": 0.0258,
+      "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "T31Y7",
+      "name": "BONO DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 31 DE MAYO DE 2027",
+      "isin": "AR0571277315",
+      "issueDate": "2025-12-15",
+      "maturityDate": "2027-05-31",
+      "issueTem": 0.024,
+      "temSource": "byma-ficha"
+    }
+  ],
+  "nonMembers": [
+    {
+      "symbol": "M31G6",
+      "name": "LETRA DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 31 DE AGOSTO DE 2026",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "SFD34",
+      "name": "TÍTULOS DE DEUDA PUBLICA ¿ VENCIMIENTO 2034",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "SFN27",
+      "name": "BONOS DE INFRAESTRUCTURA VIAL PARA LOGÍSTICA DE EXPORTACIONES EN LA PROVINCIA DE SANTA FE - EJERCICIO 2024",
+      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
+    },
+    {
+      "symbol": "TB27",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA BADLAR PRIVADA POR 0,70 CON VENCIMIENTO 23 DE NOVIEMBRE DE 2027 (BONTE 2027)",
+      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
+    },
+    {
+      "symbol": "TFU27",
+      "name": "TITULOS DE DEUDA AMORTIZABLES GARANTIZADOS AL 8.95% CON VENCIMIENTO EN 2030",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TMF27",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 26 DE FEBRERO DE 2027",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TMF28",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 25 DE FEBRERO DE 2028",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TMG27",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 31 DE AGOSTO DE 2027",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TMG28",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 31 DE AGOSTO DE 2028",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TML27",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 30 DE JULIO DE 2027",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TMVE8",
+      "name": "BONO DEL TESORO NACIONAL EN MONEDA DUAL TAMAR /DÓLAR LINKED CON VENCIMIENTO 31 DE ENERO DE 2028",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TO26",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS A TASA FIJA VENCIMIENTO 17 DE OCTUBRE DE 2026",
+      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
+    },
+    {
+      "symbol": "TTD26",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA DUAL CON VENCIMIENTO 15 DE DICIEMBRE DE 2026",
+      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
+    },
+    {
+      "symbol": "TTS26",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA DUAL CON VENCIMIENTO 15 DE SEPTIEMBRE DE 2026",
+      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
+    },
+    {
+      "symbol": "TVY0",
+      "name": "\"VALOR NEGOCIABLE VINCULADO AL PBI\" EN DOLARES ESTADOUNIDENSES SERIE 2 REGISDOS POR LA LEY DE NUEVA YORK",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TX26",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS CON AJUSTE POR CER 2% VTO. 2026",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TX28",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS CON AJUSTE POR CER 2,25% VTO 2028",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TX31",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS AJUSTADO POR CER 2,50% VENCIMIENTO 30 DE NOVIEMBRE DE 2031",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TXMD8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 15 DE DICIEMBRE DE 2028",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TXMD9",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 14 DE DICIEMBRE DE 2029",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TXMJ0",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 28 DE JUNIO DE 2030",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TXMJ8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 30 DE JUNIO DE 2028",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TXMJ9",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 29 DE JUNIO DE 2029",
+      "reason": "tasa variable TAMAR"
+    },
+    {
+      "symbol": "TZV27",
+      "name": "BONO DEL TESORO NACIONAL VINCULADO AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 30 DE JUNIO DE 2027",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TZV28",
+      "name": "BONO DEL TESORO NACIONAL VINCULADO AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 30 DE JUNIO DE 2028",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TZVD8",
+      "name": "BONO DEL TESORO NACIONAL VINCULADO AL DÓLAR ESTADOUNIDENSE CERO CUPÓN CON VENCIMIENTO 15 DE DICIEMBRE DE 2028",
+      "reason": "moneda Dólares"
+    },
+    {
+      "symbol": "TZX27",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE JUNIO DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZX28",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE JUNIO DE 2028",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXA7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE ABRIL DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXD6",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2026",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXD7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXD8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2028",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXM7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 31 DE MARZO DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXM8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 31 DE MARZO 2028",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXM9",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 28 DE MARZO 2029",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXO6",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE OCTUBRE DE 2026",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXO7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 29 DE OCTUBRE DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXS7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE SEPTIEMBRE DE 2027",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXS8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 29 DE SEPTIEMBRE DE 2028",
+      "reason": "ajustable por CER"
+    },
+    {
+      "symbol": "TZXY7",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN AJUSTABLE POR CER VENCIMIENTO 31 DE MAYO DE 2027",
+      "reason": "ajustable por CER"
+    }
+  ],
+  "unresolved": [
+    "TVSJ1"
+  ]
+}

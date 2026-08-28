@@ -1,0 +1,144 @@
+/*
+ * Sistema de tokens "Rueda".
+ *
+ * Regla rectora: el único color saturado de la aplicación es la dirección del
+ * cambio de precio. La curva, los ejes y el texto se dibujan en tinta. Así un
+ * hue en pantalla significa una sola cosa y nunca compite con otra.
+ *
+ * Los valores de sube/baja están validados contra las dos superficies reales
+ * (#FBFBF9 y #161D21): banda de luminosidad, piso de croma, separación CVD,
+ * piso de visión normal y contraste. No cambiarlos sin volver a validar.
+ */
+
+:root {
+  color-scheme: light;
+
+  --plano: #eeefeb;
+  --panel: #fbfbf9;
+  --panel-alt: #f5f5f1;
+
+  --tinta: #0d1214;
+  --tinta-2: #545d61;
+  --tinta-3: #868f93;
+
+  --regla: #dedfd8;
+  --eje: #bfc3be;
+  --borde: rgba(13, 18, 20, 0.1);
+
+  --sube: #2a78d6;
+  --baja: #e34948;
+  --neutro: #e4e4de;
+
+  --foco: #0d1214;
+
+  --sombra: 0 1px 2px rgba(13, 18, 20, 0.04);
+
+  --paso: 4px;
+  --radio: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --plano: #0a0f11;
+    --panel: #161d21;
+    --panel-alt: #1b2328;
+
+    --tinta: #f1f4f3;
+    --tinta-2: #9aa5a9;
+    --tinta-3: #6e787c;
+
+    --regla: #232c31;
+    --eje: #33403f;
+    --borde: rgba(241, 244, 243, 0.1);
+
+    --sube: #3987e5;
+    --baja: #e66767;
+    --neutro: #2a3438;
+
+    --foco: #f1f4f3;
+
+    --sombra: none;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --plano: #0a0f11;
+  --panel: #161d21;
+  --panel-alt: #1b2328;
+
+  --tinta: #f1f4f3;
+  --tinta-2: #9aa5a9;
+  --tinta-3: #6e787c;
+
+  --regla: #232c31;
+  --eje: #33403f;
+  --borde: rgba(241, 244, 243, 0.1);
+
+  --sube: #3987e5;
+  --baja: #e66767;
+  --neutro: #2a3438;
+
+  --foco: #f1f4f3;
+
+  --sombra: none;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--plano);
+  color: var(--tinta);
+  font-family: var(--fuente-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Toda cifra y todo ticker van en mono: es el vernáculo de una pantalla de
+   rueda, y mantiene las columnas alineadas. */
+.mono {
+  font-family: var(--fuente-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'ss02';
+}
+
+/* Cifras grandes y sueltas: proporcionales, nunca tabulares. */
+.cifra {
+  font-family: var(--fuente-mono);
+  font-variant-numeric: proportional-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

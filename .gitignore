@@ -1,0 +1,32 @@
+# dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# entorno
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel
+
+# editores y sistema
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# brief de trabajo, no es parte del proyecto
+prompt_curva_tasa_fija.md
+
+# archivos de bloqueo de Office
+~$*
