@@ -10,35 +10,49 @@ const MESES = [
 
 export const guion = '—';
 
-export function pct(value: number | null, digits = 2): string {
-  if (value === null || !Number.isFinite(value)) return guion;
-  return `${(value * 100).toFixed(digits)}%`;
-}
+/**
+ * Dos decimales en todo, precio o tasa, y coma decimal.
+ *
+ * Es la convención con la que cotiza la plaza local, y la que usan las
+ * pantallas contra las que se compara esta. Mezclar coma en los precios y
+ * punto en las tasas, como estaba antes, hace que dos números de la misma
+ * fila parezcan venir de sistemas distintos.
+ */
+const DECIMALES = 2;
 
-export function pctPlano(value: number | null, digits = 2): string {
-  if (value === null || !Number.isFinite(value)) return guion;
-  return `${value.toFixed(digits)}%`;
-}
-
-/** Signo menos tipográfico (−), no el guion ASCII: alinea con las cifras. */
-export function pctFirmado(value: number | null, digits = 2): string {
-  if (value === null || !Number.isFinite(value)) return guion;
-  const signo = value > 0 ? '+' : value < 0 ? '−' : '';
-  return `${signo}${Math.abs(value).toFixed(digits)}%`;
-}
-
-export function precio(value: number | null, digits = 3): string {
-  if (value === null || !Number.isFinite(value)) return guion;
+function conComa(value: number, digits = DECIMALES): string {
   return value.toLocaleString('es-AR', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
 }
 
-export function numeroFirmado(value: number | null, digits = 3): string {
+export function pct(value: number | null, digits = DECIMALES): string {
+  if (value === null || !Number.isFinite(value)) return guion;
+  return `${conComa(value * 100, digits)}%`;
+}
+
+export function pctPlano(value: number | null, digits = DECIMALES): string {
+  if (value === null || !Number.isFinite(value)) return guion;
+  return `${conComa(value, digits)}%`;
+}
+
+/** Signo menos tipográfico (−), no el guion ASCII: alinea con las cifras. */
+export function pctFirmado(value: number | null, digits = DECIMALES): string {
   if (value === null || !Number.isFinite(value)) return guion;
   const signo = value > 0 ? '+' : value < 0 ? '−' : '';
-  return `${signo}${Math.abs(value).toFixed(digits)}`;
+  return `${signo}${conComa(Math.abs(value), digits)}%`;
+}
+
+export function precio(value: number | null, digits = DECIMALES): string {
+  if (value === null || !Number.isFinite(value)) return guion;
+  return conComa(value, digits);
+}
+
+export function numeroFirmado(value: number | null, digits = DECIMALES): string {
+  if (value === null || !Number.isFinite(value)) return guion;
+  const signo = value > 0 ? '+' : value < 0 ? '−' : '';
+  return `${signo}${conComa(Math.abs(value), digits)}`;
 }
 
 export function entero(value: number | null): string {

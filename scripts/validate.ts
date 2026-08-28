@@ -76,7 +76,7 @@ async function main() {
         num(i.priceChange).padStart(7),
         (i.priceChangePct === null ? '—' : i.priceChangePct.toFixed(2)).padStart(7),
         num(i.finalPayment).padStart(9),
-        pct(i.tem, 3).padStart(7),
+        pct(i.tem).padStart(8),
         pct(i.tea, 2).padStart(7),
         (() => {
           const v = i.volumeAmount ?? i.volumeNominal;

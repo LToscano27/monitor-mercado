@@ -120,7 +120,7 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
                 <td className={`mono ${estilos.numerica}`} data-tono={tono(i.priceChangePct)}>
                   {pctFirmado(i.priceChangePct)}
                 </td>
-                <td className={`mono ${estilos.numerica}`}>{pct(i.tem, 3)}</td>
+                <td className={`mono ${estilos.numerica}`}>{pct(i.tem)}</td>
                 <td className={`mono ${estilos.numerica} ${estilos.precio}`}>{pct(i.tea)}</td>
                 <td className={`mono ${estilos.numerica}`}>{precio(i.finalPayment)}</td>
                 <td
