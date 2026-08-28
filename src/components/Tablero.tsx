@@ -244,9 +244,7 @@ export function Tablero({ slug, universos }: Props) {
               </span>
             </label>
 
-            <p className={estilos.nota}>
-              Cotizaciones a 24 horas · BYMA publica con ~20 min de retraso
-            </p>
+            <p className={estilos.nota}>Cotizaciones a 24 horas</p>
           </div>
 
           <div className={estilos.contenido} data-cargando={cargando || undefined}>
