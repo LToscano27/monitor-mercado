@@ -19,9 +19,21 @@ import type {
 } from './types';
 import type { UniverseDefinition } from './universes/types';
 
-const FETCH_TIMEOUT_MS = 12_000;
+/**
+ * Presupuesto total del request, por debajo del maxDuration de la función.
+ *
+ * La cascada puede encadenar tres intentos (panel BYMA, panel data912, serie
+ * de cierres). Si cada uno usa su timeout completo la suma se pasa y Vercel
+ * devuelve 504, que es la peor respuesta posible: ni datos ni explicación.
+ * Con un presupuesto compartido, el último intento usa lo que sobra y siempre
+ * queda tiempo para responder algo.
+ */
+const PRESUPUESTO_MS = 18_000;
+const PANEL_TIMEOUT_MS = 7_000;
 /** La serie de cierre son ~11 pedidos en lotes; necesita más aire. */
-const CLOSING_TIMEOUT_MS = 25_000;
+const CLOSING_TIMEOUT_MS = 14_000;
+/** Debajo de esto no vale la pena arrancar un intento. */
+const MINIMO_UTIL_MS = 1_500;
 
 /** Offset fijo de la plaza local. Argentina no aplica horario de verano. */
 const MARKET_UTC_OFFSET = '-03:00';
@@ -37,10 +49,22 @@ interface QuoteFetchResult {
   warnings: string[];
 }
 
-function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms = FETCH_TIMEOUT_MS): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return fn(controller.signal).finally(() => clearTimeout(timer));
+/** Reloj del presupuesto: cuánto queda antes de tener que responder. */
+function crearPresupuesto(total = PRESUPUESTO_MS) {
+  const vence = Date.now() + total;
+  return {
+    restante: () => vence - Date.now(),
+    /** Corre `fn` con el menor entre su timeout y lo que quede de presupuesto. */
+    correr<T>(fn: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+      const disponible = Math.min(ms, vence - Date.now());
+      if (disponible < MINIMO_UTIL_MS) {
+        return Promise.reject(new Error('sin tiempo en el presupuesto del request'));
+      }
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), disponible);
+      return fn(controller.signal).finally(() => clearTimeout(timer));
+    },
+  };
 }
 
 /**
@@ -85,19 +109,24 @@ async function fetchQuotesWithFallback(
   universe: UniverseDefinition,
 ): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
+  const presupuesto = crearPresupuesto();
   let quotes: Map<string, Quote> | null = null;
   let source: SourceId = 'byma';
   let fallbackUsed = false;
 
   try {
-    quotes = await withTimeout((signal) => byma.fetchQuotes(universe.bymaPanels, signal));
+    quotes = await presupuesto.correr(
+      (signal) => byma.fetchQuotes(universe.bymaPanels, signal),
+      PANEL_TIMEOUT_MS,
+    );
   } catch (err) {
     warnings.push(
       `BYMA no respondió (${(err as Error).message}); se usó data912 como respaldo.`,
     );
     try {
-      quotes = await withTimeout((signal) =>
-        data912.fetchQuotes(universe.data912Feeds, signal),
+      quotes = await presupuesto.correr(
+        (signal) => data912.fetchQuotes(universe.data912Feeds, signal),
+        PANEL_TIMEOUT_MS,
       );
       source = 'data912';
       fallbackUsed = true;
@@ -112,7 +141,7 @@ async function fetchQuotesWithFallback(
 
   // Mercado cerrado: los precios son los de cierre de la última rueda.
   try {
-    const cierres = await withTimeout(
+    const cierres = await presupuesto.correr(
       (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
       CLOSING_TIMEOUT_MS,
     );
