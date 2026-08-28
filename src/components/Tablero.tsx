@@ -9,7 +9,16 @@ import { SelectorTema } from './SelectorTema';
 import { fechaCorta, guion } from '@/lib/format';
 import estilos from './Tablero.module.css';
 
-const REFRESCO_MS = 60_000;
+/**
+ * Cada cuánto se vuelve a pedir el universo.
+ *
+ * En rueda se pide seguido porque el precio se mueve; con el mercado cerrado
+ * el cierre ya no cambia y sondear es puro gasto. Pedir cada 20s no castiga a
+ * BYMA: el CDN cachea la respuesta y el proceso cachea los paneles, así que la
+ * fuente se toca mucho menos seguido que el cliente.
+ */
+const REFRESCO_EN_RUEDA_MS = 20_000;
+const REFRESCO_CERRADO_MS = 300_000;
 
 /**
  * A un día hábil o menos del vencimiento, la tasa implícita deja de ser
@@ -82,9 +91,30 @@ export function Tablero({ slug, universos }: Props) {
 
   useEffect(() => {
     traer();
-    const id = setInterval(traer, REFRESCO_MS);
+    const cada =
+      datos?.session === 'cierre' ? REFRESCO_CERRADO_MS : REFRESCO_EN_RUEDA_MS;
+    const id = setInterval(() => {
+      // Una pestaña que nadie mira no necesita datos frescos.
+      if (document.visibilityState === 'visible') traer();
+    }, cada);
+
+    // Al volver a la pestaña, refrescar en el acto en vez de esperar el turno.
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') traer();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', alVolver);
+    };
+  }, [traer, datos?.session]);
+
+  // Reloj de un segundo, solo para que la antigüedad del dato avance sola.
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [traer]);
+  }, []);
 
   const marcados = useMemo(
     () => datos?.instruments.filter((i) => i.quality.level !== 'ok').length ?? 0,
@@ -102,6 +132,25 @@ export function Tablero({ slug, universos }: Props) {
       .filter((h): h is string => Boolean(h));
     return horas.length ? horas.sort().at(-1)! : null;
   }, [datos]);
+
+  /**
+   * Antigüedad del dato más reciente, en segundos.
+   *
+   * Se calcula contra el timestamp con huso que manda el backend, no contra la
+   * hora suelta, así el número es correcto sin importar dónde esté el lector.
+   * Es la única cifra de la pantalla que avanza sola: dice si lo que se está
+   * mirando es de recién o quedó viejo.
+   */
+  const antiguedad = useMemo(() => {
+    if (!datos || datos.session !== 'intradiaria') return null;
+    const marcas = datos.instruments
+      .map((i) => i.dataTimestamp)
+      .filter((t): t is string => Boolean(t))
+      .map((t) => new Date(t).getTime())
+      .filter((t) => Number.isFinite(t));
+    if (!marcas.length) return null;
+    return Math.max(0, Math.round((ahora - Math.max(...marcas)) / 1000));
+  }, [datos, ahora]);
 
   if (error && !datos) {
     return (
@@ -148,11 +197,21 @@ export function Tablero({ slug, universos }: Props) {
                   </span>
                 </span>
               </div>
-              <Dato
-                etiqueta="Último dato"
-                valor={ultimoDato ?? guion}
-                mono={datos.session !== 'cierre'}
-              />
+              <div className={estilos.selloItem}>
+                <span className={estilos.selloEtiqueta}>Último dato</span>
+                <span
+                  className={
+                    datos.session !== 'cierre'
+                      ? `mono ${estilos.selloValor}`
+                      : estilos.selloValor
+                  }
+                >
+                  {ultimoDato ?? guion}
+                  {antiguedad !== null && (
+                    <span className={estilos.antiguedad}>{formatoAntiguedad(antiguedad)}</span>
+                  )}
+                </span>
+              </div>
               <Dato etiqueta="Fuente" valor={datos.source} />
             </>
           )}
@@ -249,6 +308,15 @@ export function Tablero({ slug, universos }: Props) {
       {!datos && cargando && <p className={estilos.esperando}>Trayendo la rueda…</p>}
     </main>
   );
+}
+
+/** 'hace 12 s' · 'hace 3 min' · 'hace 1 h 20 min' */
+function formatoAntiguedad(segundos: number): string {
+  if (segundos < 60) return `hace ${segundos} s`;
+  const min = Math.floor(segundos / 60);
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  return `hace ${h} h ${min % 60} min`;
 }
 
 function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: string; mono?: boolean }) {
