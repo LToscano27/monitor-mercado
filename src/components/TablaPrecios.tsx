@@ -16,7 +16,8 @@ import estilos from './TablaPrecios.module.css';
 
 type Clave =
   | 'ticker' | 'maturityDate' | 'daysToMaturity' | 'lastPrice' | 'priceChange'
-  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount' | 'orderCount';
+  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount' | 'orderCount'
+  | 'calendarDaysToMaturity';
 
 interface Columna {
   clave: Clave;
@@ -28,7 +29,12 @@ interface Columna {
 const COLUMNAS: Columna[] = [
   { clave: 'ticker', titulo: 'Ticker', numerica: false },
   { clave: 'maturityDate', titulo: 'Vence', numerica: false },
-  { clave: 'daysToMaturity', titulo: 'Días', ayuda: 'Días desde la liquidación T+1 hasta el vencimiento', numerica: true },
+  {
+    clave: 'calendarDaysToMaturity',
+    titulo: 'Días al vto.',
+    ayuda: 'Días corridos hasta el vencimiento. El rendimiento se calcula desde la liquidación T+1, que puede caer uno o más días después.',
+    numerica: true,
+  },
   { clave: 'lastPrice', titulo: 'Precio', numerica: true },
   { clave: 'priceChange', titulo: 'Var.', numerica: true },
   { clave: 'priceChangePct', titulo: 'Var. %', numerica: true },
@@ -41,7 +47,7 @@ const COLUMNAS: Columna[] = [
 
 export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }) {
   const [orden, setOrden] = useState<{ clave: Clave; desc: boolean }>({
-    clave: 'daysToMaturity',
+    clave: 'calendarDaysToMaturity',
     desc: false,
   });
 
@@ -107,7 +113,9 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
               <tr key={i.ticker} data-marcado={marcado || undefined}>
                 <th scope="row" className={`mono ${estilos.ticker}`}>{i.ticker}</th>
                 <td className={estilos.fecha}>{fechaCorta(i.maturityDate)}</td>
-                <td className={`mono ${estilos.numerica}`}>{entero(i.daysToMaturity)}</td>
+                <td className={`mono ${estilos.numerica}`}>
+                  {entero(i.calendarDaysToMaturity)}
+                </td>
                 <td className={`mono ${estilos.numerica} ${estilos.precio}`}>{precio(i.lastPrice)}</td>
                 <td className={`mono ${estilos.numerica}`} data-tono={tono(i.priceChange)}>
                   {numeroFirmado(i.priceChange)}

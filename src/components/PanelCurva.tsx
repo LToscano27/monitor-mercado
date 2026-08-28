@@ -330,7 +330,7 @@ function Globo({
           etiqueta={metrica === 'tea' ? 'TEM' : 'TEA'}
           valor={pct(metrica === 'tea' ? i.tem : i.tea)}
         />
-        <Fila etiqueta="Días" valor={entero(i.daysToMaturity)} />
+        <Fila etiqueta="Días al vto." valor={entero(i.calendarDaysToMaturity)} />
         <Fila etiqueta="Precio" valor={precio(i.lastPrice)} />
         <Fila
           etiqueta="Variación"

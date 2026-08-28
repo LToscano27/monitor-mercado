@@ -66,8 +66,18 @@ export interface InstrumentRow {
   ticker: string;
   name: string;
   maturityDate: IsoDate;
-  /** Días desde la fecha de liquidación T+1 hasta el vencimiento. */
+  /**
+   * Días desde la fecha de liquidación T+1 hasta el vencimiento.
+   * Es el plazo con el que se calculan TEM y TEA: el comprador de hoy cobra
+   * recién a partir de la liquidación.
+   */
   daysToMaturity: number;
+  /**
+   * Días corridos desde la rueda hasta el vencimiento. Es lo que se muestra,
+   * porque es lo que alguien quiere decir cuando pregunta cuánto le falta a un
+   * papel. Puede diferir del anterior por el T+1 y los fines de semana.
+   */
+  calendarDaysToMaturity: number;
   lastPrice: number | null;
   /**
    * De dónde salió lastPrice:

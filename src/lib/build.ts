@@ -167,11 +167,12 @@ export async function buildUniverse(
   for (const [symbol, ref] of universe.reference) {
     const maturity = parseIsoDate(ref.maturityDate);
     const daysToMaturity = daysBetween(settlement, maturity);
+    const calendarDaysToMaturity = daysBetween(tradeDate, maturity);
     const quote = quotes.get(symbol);
 
     if (!quote) {
       instruments.push(
-        emptyRow(ref, daysToMaturity, {
+        emptyRow(ref, daysToMaturity, calendarDaysToMaturity, {
           code: 'STALE_PRICE',
           level: 'bad',
           message:
@@ -230,6 +231,7 @@ export async function buildUniverse(
       name: ref.name,
       maturityDate: ref.maturityDate,
       daysToMaturity,
+      calendarDaysToMaturity,
       lastPrice: price,
       priceBasis,
       priceDate: quote.priceDate ?? tradeDateIso,
@@ -313,6 +315,7 @@ export async function buildUniverse(
 function emptyRow(
   ref: ZeroCouponReference,
   daysToMaturity: number,
+  calendarDaysToMaturity: number,
   flag: QualityFlag,
 ): InstrumentRow {
   return {
@@ -320,6 +323,7 @@ function emptyRow(
     name: ref.name,
     maturityDate: ref.maturityDate,
     daysToMaturity,
+    calendarDaysToMaturity,
     lastPrice: null,
     priceBasis: null,
     priceDate: null,
