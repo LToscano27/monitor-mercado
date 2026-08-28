@@ -20,6 +20,8 @@ import type {
 import type { UniverseDefinition } from './universes/types';
 
 const FETCH_TIMEOUT_MS = 8_000;
+/** La serie de cierre son ~11 pedidos en lotes; necesita más aire. */
+const CLOSING_TIMEOUT_MS = 25_000;
 
 /** Offset fijo de la plaza local. Argentina no aplica horario de verano. */
 const MARKET_UTC_OFFSET = '-03:00';
@@ -31,13 +33,32 @@ interface QuoteFetchResult {
   quotes: Map<string, Quote>;
   source: SourceId;
   fallbackUsed: boolean;
+  session: UniverseResponse['session'];
   warnings: string[];
 }
 
-function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>, ms = FETCH_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), ms);
   return fn(controller.signal).finally(() => clearTimeout(timer));
+}
+
+/**
+ * ¿El panel en vivo tiene datos de la rueda en curso?
+ *
+ * Fuera del horario de rueda BYMA no deja de responder: devuelve el panel
+ * completo con todos los campos en cero, cierre anterior incluido. Un panel
+ * ceroteado no es "el mercado no operó", es "no hay rueda abierta".
+ */
+function panelTieneRueda(
+  quotes: Map<string, Quote>,
+  universe: UniverseDefinition,
+): boolean {
+  for (const symbol of universe.reference.keys()) {
+    const q = quotes.get(symbol);
+    if (q && (q.last !== null || q.previousClose !== null)) return true;
+  }
+  return false;
 }
 
 /**
@@ -45,37 +66,73 @@ function withTimeout<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
  * anterior y hora del último trade. data912 queda como respaldo — está
  * verificado que es un espejo de BYMA, así que los números no cambian, pero
  * pierde la hora del trade.
+ *
+ * Con el mercado cerrado ninguno de los dos paneles sirve, y ahí se va a la
+ * serie histórica de BYMA a buscar el cierre real de la última rueda.
  */
 async function fetchQuotesWithFallback(
   universe: UniverseDefinition,
 ): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
+  let quotes: Map<string, Quote> | null = null;
+  let source: SourceId = 'byma';
+  let fallbackUsed = false;
+
   try {
-    const quotes = await withTimeout((signal) =>
-      byma.fetchQuotes(universe.bymaPanels, signal),
-    );
-    return { quotes, source: 'byma', fallbackUsed: false, warnings };
+    quotes = await withTimeout((signal) => byma.fetchQuotes(universe.bymaPanels, signal));
   } catch (err) {
     warnings.push(
-      `BYMA no respondió (${(err as Error).message}); se usó data912 como respaldo. La hora del último trade no está disponible en esa fuente.`,
+      `BYMA no respondió (${(err as Error).message}); se usó data912 como respaldo.`,
     );
+    try {
+      quotes = await withTimeout((signal) =>
+        data912.fetchQuotes(universe.data912Feeds, signal),
+      );
+      source = 'data912';
+      fallbackUsed = true;
+    } catch (err2) {
+      warnings.push(`data912 tampoco respondió (${(err2 as Error).message}).`);
+    }
   }
-  const quotes = await withTimeout((signal) =>
-    data912.fetchQuotes(universe.data912Feeds, signal),
+
+  if (quotes && panelTieneRueda(quotes, universe)) {
+    return { quotes, source, fallbackUsed, session: 'intradiaria', warnings };
+  }
+
+  // Mercado cerrado: los precios son los de cierre de la última rueda.
+  const cierres = await withTimeout(
+    (signal) => byma.fetchClosingQuotes([...universe.reference.keys()], signal),
+    CLOSING_TIMEOUT_MS,
   );
-  return { quotes, source: 'data912', fallbackUsed: true, warnings };
+  return {
+    quotes: cierres,
+    source: 'byma',
+    fallbackUsed: false,
+    session: 'cierre',
+    warnings,
+  };
 }
 
 export async function buildUniverse(
   universe: UniverseDefinition,
   now: Date = new Date(),
 ): Promise<UniverseResponse> {
-  const { quotes, source, fallbackUsed, warnings } =
+  const { quotes, source, fallbackUsed, session, warnings } =
     await fetchQuotesWithFallback(universe);
 
-  const tradeDate = marketToday(now);
+  // Con el mercado cerrado la rueda de referencia no es hoy: es la última
+  // rueda con datos. La liquidación T+1 y el conteo de días cuelgan de ahí,
+  // así que tienen que salir de la misma fecha que el precio.
+  const fechasCierre = [...quotes.values()]
+    .map((q) => q.priceDate)
+    .filter((d): d is string => Boolean(d))
+    .sort();
+  const tradeDateIso =
+    session === 'cierre' && fechasCierre.length
+      ? fechasCierre[fechasCierre.length - 1]
+      : toIsoDate(marketToday(now));
+  const tradeDate = parseIsoDate(tradeDateIso);
   const settlement = settlementDate(tradeDate);
-  const tradeDateIso = toIsoDate(tradeDate);
 
   const instruments: InstrumentRow[] = [];
 
@@ -100,10 +157,14 @@ export async function buildUniverse(
 
     // Si no operó, el mejor precio disponible es el cierre anterior. Se usa,
     // pero el papel ya quedó marcado con NO_TRADES_TODAY.
-    const traded = (quote.orderCount ?? 0) > 0 || (quote.volumeAmount ?? 0) > 0;
-    const price = traded ? quote.last : (quote.previousClose ?? quote.last);
+    const traded =
+      (quote.orderCount ?? 0) > 0 ||
+      (quote.volumeAmount ?? 0) > 0 ||
+      (quote.volumeNominal ?? 0) > 0;
+    const price =
+      session === 'cierre' ? quote.last : traded ? quote.last : (quote.previousClose ?? quote.last);
     const priceBasis: InstrumentRow['priceBasis'] =
-      price === null ? null : traded ? 'trade' : 'previous-close';
+      price === null ? null : session === 'cierre' ? 'close' : traded ? 'trade' : 'previous-close';
 
     if (daysToMaturity <= 0) {
       flags.push({
@@ -143,6 +204,7 @@ export async function buildUniverse(
       daysToMaturity,
       lastPrice: price,
       priceBasis,
+      priceDate: quote.priceDate ?? tradeDateIso,
       priceChange,
       priceChangePct:
         priceChange !== null && previousClose
@@ -154,6 +216,7 @@ export async function buildUniverse(
       bid: quote.bid,
       ask: quote.ask,
       volumeAmount: quote.volumeAmount,
+      volumeNominal: quote.volumeNominal,
       orderCount: quote.orderCount,
       lastTradeTime: quote.lastTradeTime,
       dataTimestamp: quote.lastTradeTime
@@ -196,6 +259,7 @@ export async function buildUniverse(
     universe: universe.slug,
     label: universe.label,
     tradeDate: tradeDateIso,
+    session,
     settlementDate: toIsoDate(settlement),
     fetchedAt: now.toISOString(),
     source,
@@ -218,6 +282,7 @@ function emptyRow(
     daysToMaturity,
     lastPrice: null,
     priceBasis: null,
+    priceDate: null,
     priceChange: null,
     priceChangePct: null,
     tem: null,
@@ -226,6 +291,7 @@ function emptyRow(
     bid: null,
     ask: null,
     volumeAmount: null,
+    volumeNominal: null,
     orderCount: null,
     lastTradeTime: null,
     dataTimestamp: null,

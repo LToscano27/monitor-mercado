@@ -26,6 +26,8 @@ export interface Quote {
   currency: string;
   /** Vencimiento informado por la fuente, si lo informa. */
   maturityDate: IsoDate | null;
+  /** Rueda a la que corresponde el precio. Null si es el panel en vivo de hoy. */
+  priceDate?: IsoDate | null;
   source: SourceId;
 }
 
@@ -67,8 +69,15 @@ export interface InstrumentRow {
   /** Días desde la fecha de liquidación T+1 hasta el vencimiento. */
   daysToMaturity: number;
   lastPrice: number | null;
-  /** De dónde salió lastPrice: trade del día o cierre anterior. */
-  priceBasis: 'trade' | 'previous-close' | null;
+  /**
+   * De dónde salió lastPrice:
+   *  - 'trade'          último operado de la rueda en curso;
+   *  - 'close'          cierre de la última rueda (mercado cerrado);
+   *  - 'previous-close' cierre anterior, porque hoy no operó.
+   */
+  priceBasis: 'trade' | 'close' | 'previous-close' | null;
+  /** Rueda a la que corresponde lastPrice. */
+  priceDate: IsoDate | null;
   priceChange: number | null;
   priceChangePct: number | null;
   tem: number | null;
@@ -78,6 +87,7 @@ export interface InstrumentRow {
   bid: number | null;
   ask: number | null;
   volumeAmount: number | null;
+  volumeNominal: number | null;
   orderCount: number | null;
   lastTradeTime: string | null;
   /** Timestamp del dato: rueda + hora del último trade, ISO con offset. */
@@ -99,6 +109,12 @@ export interface UniverseResponse {
   label: string;
   /** Rueda a la que corresponden los precios. */
   tradeDate: IsoDate;
+  /**
+   * 'intradiaria' cuando el panel en vivo tiene datos de la rueda en curso;
+   * 'cierre' cuando el mercado está cerrado y los precios son los de cierre
+   * de la última rueda.
+   */
+  session: 'intradiaria' | 'cierre';
   /** Fecha de liquidación T+1 usada para contar días. */
   settlementDate: IsoDate;
   /** Momento en que nuestro backend trajo el dato. */

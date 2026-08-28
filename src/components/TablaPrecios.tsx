@@ -118,7 +118,16 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
                 <td className={`mono ${estilos.numerica}`}>{pct(i.tem, 3)}</td>
                 <td className={`mono ${estilos.numerica} ${estilos.precio}`}>{pct(i.tea)}</td>
                 <td className={`mono ${estilos.numerica}`}>{precio(i.finalPayment)}</td>
-                <td className={`mono ${estilos.numerica}`}>{monto(i.volumeAmount)}</td>
+                <td
+                  className={`mono ${estilos.numerica}`}
+                  title={
+                    i.volumeAmount !== null
+                      ? 'Monto efectivo negociado'
+                      : 'Volumen nominal negociado en la rueda de cierre'
+                  }
+                >
+                  {monto(i.volumeAmount ?? i.volumeNominal)}
+                </td>
                 <td className={`mono ${estilos.numerica}`}>{entero(i.orderCount)}</td>
                 <td className={estilos.estadoCol}>
                   {marcado ? (

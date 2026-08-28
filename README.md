@@ -59,8 +59,30 @@ vencimiento ni hora del trade, así que esos datos salen de la referencia local.
 **Descartada: Primary (Matba ROFEX).** Requiere credenciales y su entorno
 abierto es paper trading, con precios que no son de mercado real.
 
+- `GET /chart/historical-series/history` — serie diaria por instrumento.
+  Requiere el sufijo ` 24HS` en el símbolo.
+
 El fetch es server-side por diseño: además del CORS, todos los cálculos viven
 en el backend. El frontend consume `/api/universe/[slug]` y sólo dibuja.
+
+### Mercado abierto y mercado cerrado
+
+Fuera del horario de rueda BYMA **no deja de responder**: devuelve el panel
+completo con todos los campos en cero, cierre anterior incluido. Un panel
+ceroteado no significa "no operó", significa "no hay rueda abierta".
+
+Por eso el endpoint tiene dos ramas, y `session` en la respuesta dice cuál se
+usó:
+
+| `session` | de dónde sale el precio |
+|---|---|
+| `intradiaria` | panel en vivo, último operado de la rueda en curso |
+| `cierre` | serie histórica, cierre de la última rueda |
+
+Con el mercado cerrado, **la rueda de referencia no es hoy**: es la última con
+datos. La liquidación T+1 y el conteo de días cuelgan de esa fecha, no del
+calendario, así que los rendimientos son los que corresponden a ese cierre.
+Cada instrumento informa además su `priceDate` y su `priceBasis`.
 
 ## Convenciones de cálculo
 

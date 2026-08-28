@@ -11,10 +11,14 @@ import { getUniverse, listUniverses } from '@/lib/universes';
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/** La rama de cierre son ~11 pedidos a la serie histórica de BYMA. */
+export const maxDuration = 30;
 
-/** Los precios refrescan cada ~20s en la fuente; no tiene sentido pegarle más seguido. */
-const CACHE_SECONDS = 20;
-const STALE_WHILE_REVALIDATE_SECONDS = 60;
+/** En rueda los precios refrescan cada ~20s en la fuente. */
+const CACHE_EN_RUEDA = 20;
+/** Con el mercado cerrado los cierres ya no cambian: se cachean fuerte. */
+const CACHE_CERRADO = 600;
+const STALE_WHILE_REVALIDATE = 60;
 
 export async function GET(
   _request: Request,
@@ -32,9 +36,10 @@ export async function GET(
 
   try {
     const payload = await buildUniverse(universe);
+    const maxAge = payload.session === 'cierre' ? CACHE_CERRADO : CACHE_EN_RUEDA;
     return NextResponse.json(payload, {
       headers: {
-        'Cache-Control': `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`,
+        'Cache-Control': `public, s-maxage=${maxAge}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`,
       },
     });
   } catch (err) {

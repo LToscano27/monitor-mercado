@@ -138,3 +138,134 @@ export async function fetchFicha(
   const row = payload.data?.[0];
   return row ? { ...row, symbol } : null;
 }
+
+// ─── Serie histórica: los datos de cierre ────────────────────────────────
+
+interface BymaSerie {
+  s: 'ok' | 'no_data' | 'error';
+  t?: number[];
+  c?: number[];
+  v?: number[];
+}
+
+export interface Cierre {
+  /** Fecha de la rueda, 'YYYY-MM-DD'. */
+  date: string;
+  close: number;
+  /** Volumen nominal negociado en esa rueda. */
+  volume: number | null;
+}
+
+/** Los históricos exigen el sufijo ' 24HS'. Sin él la API responde 400. */
+const SUFIJO_24HS = ' 24HS';
+
+const REQUEST_TIMEOUT_MS = 7_000;
+
+/**
+ * Un fallo de red transitorio no puede hacer desaparecer un instrumento de la
+ * curva. Se reintenta una vez antes de darlo por perdido; si igual falla, el
+ * instrumento sale marcado y el lector se entera.
+ */
+async function conReintento<T>(fn: () => Promise<T>, alFallar: T): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  try {
+    return await fn();
+  } catch {
+    return alFallar;
+  }
+}
+
+/**
+ * Últimas ruedas de un instrumento. Es la fuente de los datos de cierre:
+ * cuando el mercado está cerrado, BYMA cerotea el panel en vivo pero la serie
+ * histórica sigue teniendo el cierre real de la última rueda.
+ */
+export async function fetchHistory(
+  symbol: string,
+  dias = 20,
+  signal?: AbortSignal,
+): Promise<Cierre[]> {
+  const hasta = Math.floor(Date.now() / 1000);
+  const desde = hasta - dias * 86_400;
+  const query = new URLSearchParams({
+    symbol: `${symbol}${SUFIJO_24HS}`,
+    resolution: 'D',
+    from: String(desde),
+    to: String(hasta),
+  });
+
+  // Timeout propio por pedido: un instrumento lento no puede arrastrar al lote.
+  const res = await fetch(`${BASE}/chart/historical-series/history?${query}`, {
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+      : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`BYMA histórico ${symbol} respondió ${res.status}`);
+
+  const serie = (await res.json()) as BymaSerie;
+  if (serie.s !== 'ok' || !serie.t?.length || !serie.c?.length) return [];
+
+  return serie.t.map((ts, i) => ({
+    date: new Date(ts * 1000).toISOString().slice(0, 10),
+    close: serie.c![i],
+    volume: serie.v?.[i] ?? null,
+  }));
+}
+
+/**
+ * Cotizaciones de cierre para un conjunto de tickers.
+ *
+ * Devuelve el cierre de la última rueda disponible y el de la anterior, que es
+ * lo que necesita la variación del día. No hay book ni hora de trade: fuera de
+ * rueda esos datos no existen, y no se inventan.
+ */
+export async function fetchClosingQuotes(
+  symbols: readonly string[],
+  signal?: AbortSignal,
+): Promise<Map<string, Quote>> {
+  const quotes = new Map<string, Quote>();
+  const LOTE = 4; // BYMA no documenta rate limit; no lo apuramos
+
+  for (let i = 0; i < symbols.length; i += LOTE) {
+    const lote = symbols.slice(i, i + LOTE);
+    const series = await Promise.all(
+      lote.map((s) => conReintento(() => fetchHistory(s, 20, signal), [] as Cierre[])),
+    );
+
+    lote.forEach((symbol, k) => {
+      const barras = series[k];
+      if (!barras.length) return;
+      const ultima = barras[barras.length - 1];
+      const previa = barras[barras.length - 2];
+
+      quotes.set(symbol, {
+        symbol,
+        last: ultima.close || null,
+        previousClose: previa?.close ?? null,
+        open: null,
+        high: null,
+        low: null,
+        vwap: null,
+        bid: null,
+        ask: null,
+        bidSize: null,
+        askSize: null,
+        volumeNominal: ultima.volume,
+        volumeAmount: null,
+        orderCount: null,
+        lastTradeTime: null,
+        currency: 'ARS',
+        maturityDate: null,
+        priceDate: ultima.date,
+        source: 'byma',
+      });
+    });
+  }
+
+  return quotes;
+}
