@@ -156,12 +156,19 @@ endpoint ni el frontend cambian.
 
 ## La curva
 
+Eje X: días al vencimiento. Eje Y: TEA o TEM, a elección.
+
 Los instrumentos se grafican como puntos dispersos. El trazo es un **ajuste
-logarítmico** por mínimos cuadrados de la forma `TEA = a + b · ln(días)`,
-calculado sólo sobre los puntos sin marcas de calidad. No es una unión de
-puntos: unir los puntos con segmentos rectos no describe ninguna curva de
-rendimientos. El R² y el n van dibujados sobre el gráfico para que se sepa
-cuánto confiar en el trazo.
+logarítmico** por mínimos cuadrados de la forma `TEA = a + b · ln(días)`. No es
+una unión de puntos: unir los puntos con segmentos rectos no describe ninguna
+curva de rendimientos. El R² y el n van dibujados sobre el gráfico para que se
+sepa cuánto confiar en el trazo.
+
+**Qué entra al ajuste** se elige: cada bono se saca o se vuelve a poner desde la
+lista de fichas o haciendo clic en su punto, y la regresión se recalcula. Un
+bono sacado no se esconde — queda como punto hueco y atenuado — así se puede
+comparar la curva con y sin él. Los instrumentos con marcas de calidad quedan
+fuera del ajuste siempre.
 
 ## Diseño
 

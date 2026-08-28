@@ -1,17 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { InstrumentRow } from '@/lib/types';
-import {
-  barraDivergente,
-  escalaLineal,
-  marcasDeMeses,
-  marcasLimpias,
-} from '@/lib/escala';
+import { escalaLineal, marcasLimpias } from '@/lib/escala';
 import { regresionLogaritmica } from '@/lib/ajuste';
 import {
   entero,
-  etiquetaMes,
   fechaCorta,
   guion,
   monto,
@@ -27,31 +21,33 @@ export type Metrica = 'tea' | 'tem';
 interface Props {
   instrumentos: InstrumentRow[];
   metrica: Metrica;
-  liquidacion: string;
   ocultarMarcados: boolean;
+  /** Tickers sacados a mano del ajuste. */
+  excluidos: ReadonlySet<string>;
+  onToggle: (ticker: string) => void;
 }
 
-const ALTO_CURVA = 300;
-const ALTO_EJE = 42;
-const ALTO_VARIACION = 116;
-const PAD_SUP = 18;
+const ALTO_CURVA = 360;
+const ALTO_EJE = 46;
+const PAD_SUP = 20;
 const PAD_IZQ = 66;
-const PAD_DER = 22;
-const PAD_INF = 10;
+const PAD_DER = 24;
 
-const ANCHO_BARRA = 16;
 const RADIO_PUNTO = 4.5;
+const ALTO_TOTAL = PAD_SUP + ALTO_CURVA + ALTO_EJE;
 
-const ALTO_TOTAL = PAD_SUP + ALTO_CURVA + ALTO_EJE + ALTO_VARIACION + PAD_INF;
-
-export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados }: Props) {
-  const contenedor = useRef<HTMLDivElement>(null);
+export function PanelCurva({
+  instrumentos,
+  metrica,
+  ocultarMarcados,
+  excluidos,
+  onToggle,
+}: Props) {
   const [ancho, setAncho] = useState(960);
   const [activo, setActivo] = useState<string | null>(null);
 
   const medir = useCallback((nodo: HTMLDivElement | null) => {
     if (!nodo) return;
-    contenedor.current = nodo;
     const observer = new ResizeObserver(([entrada]) => {
       setAncho(Math.max(360, entrada.contentRect.width));
     });
@@ -73,7 +69,6 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
 
     const conDato = visibles.filter((i) => i[metrica] !== null);
     const maxDias = Math.max(30, ...visibles.map((i) => i.daysToMaturity));
-
     const x = escalaLineal([0, maxDias * 1.04], [x0, x1]);
 
     const valores = conDato.map((i) => i[metrica] as number);
@@ -85,37 +80,32 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
     const curvaInf = PAD_SUP + ALTO_CURVA;
     const y = escalaLineal([minV - colchon, maxV + colchon], [curvaInf, curvaSup]);
 
-    const cambios = visibles
-      .map((i) => i.priceChangePct)
-      .filter((v): v is number => v !== null);
-    const maxCambio = Math.max(0.05, ...cambios.map(Math.abs)) * 1.25;
-
-    const varSup = curvaInf + ALTO_EJE;
-    const varInf = varSup + ALTO_VARIACION;
-    const yVar = escalaLineal([-maxCambio, maxCambio], [varInf, varSup]);
-
     return {
-      x, y, yVar, x0, x1, curvaSup, curvaInf, varSup, varInf, maxDias,
+      x, y, x0, x1, curvaSup, curvaInf, maxDias,
       marcasY: marcasLimpias(minV - colchon, maxV + colchon, 5),
-      marcasVar: [maxCambio * 0.6, 0, -maxCambio * 0.6],
-      marcasMes: marcasDeMeses(liquidacion, maxDias * 1.04),
-      cero: yVar(0),
+      marcasX: marcasLimpias(0, maxDias * 1.04, 6).filter((d) => d > 0),
     };
-  }, [ancho, visibles, metrica, liquidacion]);
+  }, [ancho, visibles, metrica]);
 
-  const { x, y, yVar } = geometria;
+  const { x, y } = geometria;
 
-  // La curva de mercado es un ajuste, no una unión de puntos. Sólo entran los
-  // instrumentos sin marcas de calidad: un papel que no operó no puede
-  // deformar la curva de todos los demás.
+  /**
+   * Entran al ajuste los instrumentos sin marcas de calidad que además no
+   * hayan sido sacados a mano. La curva se recalcula con lo que quede.
+   */
   const ajuste = useMemo(
     () =>
       regresionLogaritmica(
         visibles
-          .filter((i) => i.quality.level === 'ok' && i[metrica] !== null)
+          .filter(
+            (i) =>
+              i.quality.level === 'ok' &&
+              i[metrica] !== null &&
+              !excluidos.has(i.ticker),
+          )
           .map((i) => ({ dias: i.daysToMaturity, valor: i[metrica] as number })),
       ),
-    [visibles, metrica],
+    [visibles, metrica, excluidos],
   );
 
   const trazo = useMemo(() => {
@@ -159,7 +149,7 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
         height={ALTO_TOTAL}
         className={estilos.lienzo}
         role="img"
-        aria-label={`Curva de ${etiquetaMetrica} y variación del día por vencimiento. Los valores exactos están en la tabla de precios.`}
+        aria-label={`Curva de ${etiquetaMetrica} contra días al vencimiento. Los valores exactos están en la tabla de precios.`}
         onPointerMove={alPuntero}
         onPointerLeave={() => setActivo(null)}
       >
@@ -179,50 +169,57 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
           </g>
         ))}
 
-        <text
-          x={geometria.x0 - 12}
-          y={geometria.curvaSup - 6}
-          className={estilos.tituloEje}
-        >
+        <text x={geometria.x0 - 12} y={geometria.curvaSup - 6} className={estilos.tituloEje}>
           {etiquetaMetrica}
         </text>
 
-        {/* ── vertical del instrumento activo, cruzando las dos bandas ── */}
-        {instrumentoActivo && (
-          <line
-            x1={x(instrumentoActivo.daysToMaturity)}
-            x2={x(instrumentoActivo.daysToMaturity)}
-            y1={geometria.curvaSup}
-            y2={geometria.varInf}
-            className={estilos.hilo}
-          />
-        )}
-
-        {/* ── curva de ajuste ───────────────────────────────────── */}
-        {trazo && <path d={trazo} className={estilos.trazo} />}
         {ajuste && (
           <text x={geometria.x1} y={geometria.curvaSup - 6} className={estilos.notaAjuste}>
             {`ajuste log · R² ${ajuste.r2.toFixed(2)} · n ${ajuste.n}`}
           </text>
         )}
 
+        {instrumentoActivo && (
+          <line
+            x1={x(instrumentoActivo.daysToMaturity)}
+            x2={x(instrumentoActivo.daysToMaturity)}
+            y1={geometria.curvaSup}
+            y2={geometria.curvaInf}
+            className={estilos.hilo}
+          />
+        )}
+
+        {/* ── curva de ajuste ───────────────────────────────────── */}
+        {trazo && <path d={trazo} className={estilos.trazo} />}
+
+        {/* ── puntos ────────────────────────────────────────────── */}
         {visibles.map((i, idx) => {
           const v = i[metrica];
           if (v === null) return null;
           const cx = x(i.daysToMaturity);
           const cy = y(v);
           const marcado = i.quality.level !== 'ok';
+          const fuera = excluidos.has(i.ticker);
           const esActivo = i.ticker === activo;
           const arriba = idx % 2 === 0;
+
           return (
             <g
               key={i.ticker}
               tabIndex={0}
-              role="button"
-              aria-label={`${i.ticker}, vence ${fechaCorta(i.maturityDate)}, ${etiquetaMetrica} ${pct(v)}`}
+              role="checkbox"
+              aria-checked={!fuera}
+              aria-label={`${i.ticker}, vence ${fechaCorta(i.maturityDate)}, ${etiquetaMetrica} ${pct(v)}. ${fuera ? 'Fuera del ajuste' : 'En el ajuste'}`}
               onFocus={() => setActivo(i.ticker)}
               onBlur={() => setActivo(null)}
-              className={estilos.punto}
+              onClick={() => onToggle(i.ticker)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onToggle(i.ticker);
+                }
+              }}
+              className={`${estilos.punto} ${fuera ? estilos.puntoFuera : ''}`}
             >
               {/* Blanco de impacto generoso: un punto de 9 px no se acierta. */}
               <circle cx={cx} cy={cy} r={16} fill="transparent" />
@@ -230,10 +227,12 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
                 cx={cx}
                 cy={cy}
                 r={RADIO_PUNTO}
-                className={marcado ? estilos.puntoMarcado : estilos.puntoPleno}
+                className={marcado || fuera ? estilos.puntoHueco : estilos.puntoPleno}
                 strokeDasharray={marcado ? '2 2' : undefined}
               />
-              {esActivo && <circle cx={cx} cy={cy} r={RADIO_PUNTO + 4} className={estilos.halo} />}
+              {esActivo && (
+                <circle cx={cx} cy={cy} r={RADIO_PUNTO + 4} className={estilos.halo} />
+              )}
               <text
                 x={cx}
                 y={arriba ? cy - 13 : cy + 20}
@@ -245,7 +244,7 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
           );
         })}
 
-        {/* ── eje de vencimientos: la columna vertebral ──────────── */}
+        {/* ── eje de días al vencimiento ────────────────────────── */}
         <line
           x1={geometria.x0}
           x2={geometria.x1}
@@ -253,71 +252,30 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
           y2={geometria.curvaInf}
           className={estilos.eje}
         />
-        {geometria.marcasMes.map((m) => (
-          <g key={`m-${m.year}-${m.monthIndex}`}>
+        {geometria.marcasX.map((d) => (
+          <g key={`mx-${d}`}>
             <line
-              x1={x(m.dias)}
-              x2={x(m.dias)}
+              x1={x(d)}
+              x2={x(d)}
               y1={geometria.curvaInf}
               y2={geometria.curvaInf + 5}
               className={estilos.eje}
             />
-            <text
-              x={x(m.dias)}
-              y={geometria.curvaInf + 19}
-              className={estilos.marcaMes}
-            >
-              {etiquetaMes(m.year, m.monthIndex)}
+            <text x={x(d)} y={geometria.curvaInf + 19} className={estilos.marcaX}>
+              {entero(d)}
             </text>
           </g>
         ))}
-        {/* ── variación del día, colgando del mismo eje ──────────── */}
-        {geometria.marcasVar.map((v) => (
-          <g key={`gv-${v}`}>
-            <line
-              x1={geometria.x0}
-              x2={geometria.x1}
-              y1={yVar(v)}
-              y2={yVar(v)}
-              className={v === 0 ? estilos.eje : estilos.grilla}
-            />
-            <text x={geometria.x0 - 12} y={yVar(v)} dy="0.32em" className={estilos.marcaEje}>
-              {v === 0 ? '0' : pctFirmado(v, 2)}
-            </text>
-          </g>
-        ))}
-        <text x={geometria.x0 - 12} y={geometria.varSup - 6} className={estilos.tituloEje}>
-          VAR. DÍA
+        <text x={geometria.x1} y={geometria.curvaInf + 37} className={estilos.tituloEjeX}>
+          DÍAS AL VENCIMIENTO
         </text>
-
-        {visibles.map((i) => {
-          if (i.priceChangePct === null) return null;
-          const cx = x(i.daysToMaturity);
-          const sube = i.priceChangePct >= 0;
-          const marcado = i.quality.level !== 'ok';
-          return (
-            <g key={`b-${i.ticker}`} className={estilos.punto}>
-              <path
-                d={barraDivergente(cx, ANCHO_BARRA, geometria.cero, yVar(i.priceChangePct))}
-                className={sube ? estilos.barraSube : estilos.barraBaja}
-                opacity={marcado ? 0.4 : 1}
-              />
-              <rect
-                x={cx - 20}
-                y={geometria.varSup}
-                width={40}
-                height={geometria.varInf - geometria.varSup}
-                fill="transparent"
-              />
-            </g>
-          );
-        })}
       </svg>
 
       {instrumentoActivo && (
         <Globo
           instrumento={instrumentoActivo}
           metrica={metrica}
+          fuera={excluidos.has(instrumentoActivo.ticker)}
           izquierda={x(instrumentoActivo.daysToMaturity)}
           ancho={ancho}
         />
@@ -329,11 +287,13 @@ export function PanelCurva({ instrumentos, metrica, liquidacion, ocultarMarcados
 function Globo({
   instrumento: i,
   metrica,
+  fuera,
   izquierda,
   ancho,
 }: {
   instrumento: InstrumentRow;
   metrica: Metrica;
+  fuera: boolean;
   izquierda: number;
   ancho: number;
 }) {
@@ -356,7 +316,11 @@ function Globo({
 
       <dl className={estilos.globoLista}>
         <Fila etiqueta={metrica === 'tea' ? 'TEA' : 'TEM'} valor={pct(i[metrica])} fuerte />
-        <Fila etiqueta={metrica === 'tea' ? 'TEM' : 'TEA'} valor={pct(metrica === 'tea' ? i.tem : i.tea)} />
+        <Fila
+          etiqueta={metrica === 'tea' ? 'TEM' : 'TEA'}
+          valor={pct(metrica === 'tea' ? i.tem : i.tea)}
+        />
+        <Fila etiqueta="Días" valor={entero(i.daysToMaturity)} />
         <Fila etiqueta="Precio" valor={precio(i.lastPrice)} />
         <Fila
           etiqueta="Variación"
@@ -364,14 +328,15 @@ function Globo({
           tono={i.priceChangePct === null ? undefined : i.priceChangePct >= 0 ? 'sube' : 'baja'}
         />
         <Fila etiqueta="Pago final" valor={precio(i.finalPayment)} />
-        <Fila etiqueta="Días" valor={entero(i.daysToMaturity)} />
-        <Fila etiqueta="Volumen" valor={monto(i.volumeAmount)} />
-        <Fila etiqueta="Operaciones" valor={entero(i.orderCount)} />
+        <Fila etiqueta="Volumen" valor={monto(i.volumeAmount ?? i.volumeNominal)} />
         <Fila etiqueta="Último trade" valor={i.lastTradeTime ?? guion} />
       </dl>
 
-      {i.quality.flags.length > 0 && (
+      {(fuera || i.quality.flags.length > 0) && (
         <ul className={estilos.globoAvisos}>
+          {fuera && (
+            <li data-nivel="warn">Fuera del ajuste. Clic para volver a incluirlo.</li>
+          )}
           {i.quality.flags.map((f) => (
             <li key={f.code} data-nivel={f.level}>
               {f.message}

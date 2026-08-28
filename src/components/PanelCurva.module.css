@@ -46,13 +46,21 @@
   text-anchor: end;
 }
 
-.marcaMes {
-  fill: var(--tinta-2);
-  font-family: var(--fuente-ui);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
+.marcaX {
+  fill: var(--tinta-3);
+  font-family: var(--fuente-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
   text-anchor: middle;
+}
+
+.tituloEjeX {
+  fill: var(--tinta-3);
+  font-family: var(--fuente-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-anchor: end;
 }
 
 /* ── curva: se dibuja en tinta, nunca en color ─────────────── */
@@ -75,22 +83,27 @@
   text-anchor: end;
 }
 
-.punto {
-  cursor: default;
-}
-
 .puntoPleno {
   fill: var(--tinta);
   stroke: var(--panel);
   stroke-width: 2;
 }
 
-/* Dato marcado: relleno hueco y anillo punteado. La forma lo distingue, no el
-   color, así se lee igual en escala de grises y con cualquier daltonismo. */
-.puntoMarcado {
+/* Dato marcado o sacado del ajuste: relleno hueco. La forma lo distingue, no
+   el color, así se lee igual en escala de grises y con cualquier daltonismo. */
+.puntoHueco {
   fill: var(--panel);
   stroke: var(--tinta-3);
   stroke-width: 1.5;
+}
+
+/* Sacado a mano: sigue visible para poder comparar la curva con y sin él. */
+.puntoFuera {
+  opacity: 0.45;
+}
+
+.punto {
+  cursor: pointer;
 }
 
 .halo {
@@ -114,16 +127,6 @@
 .tickerActivo {
   fill: var(--tinta);
   font-weight: 600;
-}
-
-/* ── variación: el único color de la pantalla ──────────────── */
-
-.barraSube {
-  fill: var(--sube);
-}
-
-.barraBaja {
-  fill: var(--baja);
 }
 
 /* ── globo ─────────────────────────────────────────────────── */
