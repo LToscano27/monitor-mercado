@@ -247,9 +247,18 @@ liquide deja de existir para la curva sin que nadie toque nada.
 
 **Altas.** Un ticker que aparece en el panel de BYMA, tiene forma de especie
 del universo y vencimiento futuro se resuelve contra su ficha técnica y entra
-con todas las funciones. La ficha se cachea 24 h, así que cada especie se
-resuelve una sola vez por instancia, y hay un tope de 4 fichas por request
-para no castigar a la fuente si aparecen varias juntas.
+con todas las funciones. Hay un tope de 4 fichas por request para no castigar
+a la fuente si aparecen varias juntas.
+
+Las fichas se cachean 24 h **cuando traen datos**, y sólo 10 minutos cuando
+vienen vacías. La distinción importa: una letra recién licitada puede empezar
+a cotizar antes de que su ficha esté publicada, y cachear ese vacío un día
+entero la dejaría fuera de la curva hasta el día siguiente aunque la
+publicaran diez minutos después.
+
+Un ticker sin ficha no genera aviso. No se puede saber ni de qué curva es, así
+que no hay nada que nadie pueda hacer con esa información: sería ruido
+permanente. Se reintenta solo.
 
 La clasificación vive en `src/lib/universes/tasa-fija-clasificador.ts` y la
 usan tanto el script offline como el descubrimiento en caliente, para que una

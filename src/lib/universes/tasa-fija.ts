@@ -23,6 +23,13 @@ const knownNonMembers = new Map<string, string>(
  */
 const TTL_FICHA_MS = 24 * 60 * 60_000;
 
+/**
+ * Cuánto se espera antes de volver a preguntar por una ficha que todavía no
+ * existe. Una letra recién licitada puede empezar a cotizar antes de que su
+ * ficha esté publicada; con este reintento entra a la curva el mismo día.
+ */
+const TTL_FICHA_AUSENTE_MS = 10 * 60_000;
+
 /** Tope de fichas por request, para no castigar a la fuente si aparecen muchas. */
 const MAX_DESCUBRIMIENTOS = 4;
 
@@ -45,18 +52,22 @@ export const tasaFija: UniverseDefinition = {
     for (const symbol of simbolos.slice(0, MAX_DESCUBRIMIENTOS)) {
       let ficha;
       try {
-        ficha = await memo(`ficha:${symbol}`, TTL_FICHA_MS, () => fetchFicha(symbol, signal));
+        ficha = await memo(
+          `ficha:${symbol}`,
+          TTL_FICHA_MS,
+          () => fetchFicha(symbol, signal),
+          TTL_FICHA_AUSENTE_MS,
+        );
       } catch (err) {
         sinResolver.push({ symbol, motivo: `error al pedir la ficha (${(err as Error).message})` });
         continue;
       }
 
-      // Sin ficha no se puede decidir nada: puede ser una especie nueva del
-      // universo o de cualquier otro. Se avisa en vez de suponer.
-      if (!ficha) {
-        sinResolver.push({ symbol, motivo: 'BYMA no publica ficha técnica' });
-        continue;
-      }
+      // Sin ficha no se puede decidir nada y no hay nada que alguien pueda
+      // hacer al respecto, así que no se avisa: sería ruido permanente por un
+      // ticker que ni siquiera se sabe de qué curva es. Se reintenta solo,
+      // por el TTL corto de arriba.
+      if (!ficha) continue;
 
       // Si pertenece a otra curva —CER, TAMAR, dólar linked— no es novedad ni
       // problema: simplemente no es de acá y se ignora en silencio.
