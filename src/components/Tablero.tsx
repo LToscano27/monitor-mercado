@@ -65,7 +65,6 @@ export function Tablero({ slug, universos }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [metrica, setMetrica] = useState<Metrica>('tea');
-  const [ocultarMarcados, setOcultarMarcados] = useState(false);
   // Sólo guardamos lo que el lector decidió a mano. El resto lo define el
   // default, así que un papel que se acerca al vencimiento sale solo de la
   // curva sin pisar ninguna elección previa.
@@ -126,11 +125,6 @@ export function Tablero({ slug, universos }: Props) {
       document.removeEventListener('visibilitychange', alVolver);
     };
   }, [traer, datos?.session]);
-
-  const marcados = useMemo(
-    () => datos?.instruments.filter((i) => i.quality.level !== 'ok').length ?? 0,
-    [datos],
-  );
 
   /**
    * Reloj de la foto: la hora de plaza menos el retraso del feed, corriendo
@@ -231,19 +225,6 @@ export function Tablero({ slug, universos }: Props) {
               ))}
             </div>
 
-            <label className={estilos.casilla}>
-              <input
-                type="checkbox"
-                checked={ocultarMarcados}
-                onChange={(e) => setOcultarMarcados(e.target.checked)}
-                disabled={marcados === 0}
-              />
-              Ocultar datos marcados
-              <span className={estilos.contador}>
-                {marcados === 0 ? 'ninguno hoy' : `${marcados} de ${datos.instruments.length}`}
-              </span>
-            </label>
-
             <p className={estilos.nota}>Cotizaciones a 24 horas</p>
           </div>
 
@@ -270,7 +251,6 @@ export function Tablero({ slug, universos }: Props) {
               <PanelCurva
                 instrumentos={datos.instruments}
                 metrica={metrica}
-                ocultarMarcados={ocultarMarcados}
                 excluidos={excluidos}
                 onToggle={alternarInstrumento}
               />
