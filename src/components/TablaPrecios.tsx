@@ -5,7 +5,6 @@ import type { InstrumentRow } from '@/lib/types';
 import {
   entero,
   fechaCorta,
-  guion,
   monto,
   numeroFirmado,
   pct,
@@ -16,7 +15,7 @@ import estilos from './TablaPrecios.module.css';
 
 type Clave =
   | 'ticker' | 'maturityDate' | 'daysToMaturity' | 'lastPrice' | 'priceChange'
-  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount' | 'orderCount';
+  | 'priceChangePct' | 'tem' | 'tea' | 'finalPayment' | 'volumeAmount';
 
 interface Columna {
   clave: Clave;
@@ -41,7 +40,6 @@ const COLUMNAS: Columna[] = [
   { clave: 'tea', titulo: 'TEA', ayuda: 'Tasa efectiva anual, actual/365', numerica: true },
   { clave: 'finalPayment', titulo: 'Pago final', ayuda: 'Monto que paga el instrumento al vencimiento por cada 100 de valor nominal', numerica: true },
   { clave: 'volumeAmount', titulo: 'Volumen', numerica: true },
-  { clave: 'orderCount', titulo: 'Ops.', numerica: true },
 ];
 
 export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }) {
@@ -98,7 +96,6 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
                 </th>
               );
             })}
-            <th scope="col" className={estilos.estadoCol}>Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -106,7 +103,13 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
             const marcado = i.quality.level !== 'ok';
             const razones = i.quality.flags.map((f) => f.message).join(' · ');
             return (
-              <tr key={i.ticker} data-marcado={marcado || undefined}>
+              // La fila marcada sigue atenuada y el motivo vive en su title,
+              // aunque ya no haya una columna que lo anuncie.
+              <tr
+                key={i.ticker}
+                data-marcado={marcado || undefined}
+                title={marcado ? razones : undefined}
+              >
                 <th scope="row" className={`mono ${estilos.ticker}`}>{i.ticker}</th>
                 <td className={estilos.fecha}>{fechaCorta(i.maturityDate)}</td>
                 <td className={`mono ${estilos.numerica}`}>{entero(i.daysToMaturity)}</td>
@@ -129,17 +132,6 @@ export function TablaPrecios({ instrumentos }: { instrumentos: InstrumentRow[] }
                   }
                 >
                   {monto(i.volumeAmount ?? i.volumeNominal)}
-                </td>
-                <td className={`mono ${estilos.numerica}`}>{entero(i.orderCount)}</td>
-                <td className={estilos.estadoCol}>
-                  {marcado ? (
-                    <span className={estilos.marca} data-nivel={i.quality.level} title={razones}>
-                      <span aria-hidden className={estilos.marcaPunto} />
-                      {i.quality.level === 'bad' ? 'Revisar' : 'Atención'}
-                    </span>
-                  ) : (
-                    <span className={estilos.sinMarca}>{guion}</span>
-                  )}
                 </td>
               </tr>
             );

@@ -297,16 +297,6 @@ export async function buildUniverse(
     );
   }
 
-  const sinResolverVivos = universe.unresolved.filter((symbol) => {
-    const q = quotes.get(symbol);
-    return q?.maturityDate != null && q.maturityDate > tradeDateIso;
-  });
-  if (sinResolverVivos.length > 0) {
-    warnings.push(
-      `Tickers candidatos que la referencia no pudo resolver: ${sinResolverVivos.join(', ')}.`,
-    );
-  }
-
   return {
     universe: universe.slug,
     label: universe.label,

@@ -110,32 +110,3 @@
   opacity: 0.65;
 }
 
-.estadoCol {
-  text-align: left;
-  width: 96px;
-}
-
-.marca {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--tinta-2);
-  cursor: help;
-  border-bottom: 1px dotted var(--tinta-3);
-}
-
-.marcaPunto {
-  width: 7px;
-  height: 7px;
-  border: 1.5px solid var(--tinta-3);
-  border-radius: 50%;
-}
-
-.marca[data-nivel='bad'] .marcaPunto {
-  background: var(--tinta-3);
-}
-
-.sinMarca {
-  color: var(--tinta-3);
-}
