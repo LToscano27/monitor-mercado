@@ -237,18 +237,35 @@ depende del hue. No sacar los signos.
 Los instrumentos marcados se dibujan con punto hueco y anillo punteado — la
 forma los distingue, no el color — y la razón aparece al pasar por encima.
 
+## Altas y bajas automáticas
+
+El universo vigente se arma en cada request; la referencia versionada es la
+base y el lugar de los overrides manuales, no una lista cerrada.
+
+**Bajas.** Una especie cuyo vencimiento ya pasó sale sola. El día que S31G6
+liquide deja de existir para la curva sin que nadie toque nada.
+
+**Altas.** Un ticker que aparece en el panel de BYMA, tiene forma de especie
+del universo y vencimiento futuro se resuelve contra su ficha técnica y entra
+con todas las funciones. La ficha se cachea 24 h, así que cada especie se
+resuelve una sola vez por instancia, y hay un tope de 4 fichas por request
+para no castigar a la fuente si aparecen varias juntas.
+
+La clasificación vive en `src/lib/universes/tasa-fija-clasificador.ts` y la
+usan tanto el script offline como el descubrimiento en caliente, para que una
+emisión nueva no se clasifique distinto según quién la mire.
+
+**Lo único que no se puede automatizar** es la TEM de emisión cuando BYMA no
+la publica en la ficha — le pasa a una minoría, como `S13N6` y `S15S6`. Sin
+ese dato no hay pago al vencimiento y por lo tanto no hay rendimiento. Esas
+especies quedan fuera con un aviso explícito en `warnings` que dice qué
+cargar y dónde: `MANUAL_ISSUE_TEM` en `tasa-fija-spec.ts`.
+
 ## Mantenimiento
 
-Cuando el Tesoro emite una especie nueva, el endpoint avisa en `warnings` que
-hay tickers sin clasificar. Ahí hay que correr:
-
-```bash
-npm run refresh:reference
-```
-
-Dos instrumentos (`S13N6`, `S15S6`) tienen la TEM de emisión cargada a mano
-porque la ficha técnica de BYMA no la informa; salen marcados con
-`temSource: "manual"` en la respuesta.
+`npm run refresh:reference` regenera el archivo versionado. Ya no hace falta
+para que aparezca una especie nueva —eso pasa solo— pero sirve para
+consolidar la referencia y revisar la clasificación completa de una.
 
 El calendario de feriados bursátiles de `conventions.ts` hay que mantenerlo al
 día: un feriado faltante corre la fecha de liquidación un día y mueve
