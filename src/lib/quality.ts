@@ -39,13 +39,18 @@ export function evaluateQuote(
 ): QualityFlag[] {
   const flags: QualityFlag[] = [];
 
-  const traded = (quote.orderCount ?? 0) > 0 || (quote.volumeAmount ?? 0) > 0;
+  // El volumen nominal cuenta igual que el monto: con el mercado cerrado la
+  // serie histórica informa nominal y no monto, y un papel que operó operó.
+  const traded =
+    (quote.orderCount ?? 0) > 0 ||
+    (quote.volumeAmount ?? 0) > 0 ||
+    (quote.volumeNominal ?? 0) > 0;
 
   if (!traded) {
     flags.push({
       code: 'NO_TRADES_TODAY',
       level: 'bad',
-      message: 'No registró operaciones en la rueda; el precio es el cierre anterior.',
+      message: 'No registró operaciones en la rueda; el precio no es de mercado.',
     });
   } else if (
     quote.orderCount !== null &&

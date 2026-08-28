@@ -40,7 +40,7 @@ async function main() {
 
   console.log(`\n${payload.label.toUpperCase()}  ·  universo "${payload.universe}"`);
   console.log(
-    `rueda ${payload.tradeDate}  ·  liquidación ${payload.settlementDate}  ·  fuente ${payload.source}${payload.sourceFallbackUsed ? ' (RESPALDO)' : ''}`,
+    `rueda ${payload.tradeDate} (${payload.session})  ·  liquidación ${payload.settlementDate}  ·  fuente ${payload.source}${payload.sourceFallbackUsed ? ' (RESPALDO)' : ''}`,
   );
   console.log(
     `convención ${payload.conventions.dayCountBasis}, ${payload.conventions.settlement}, capitalización ${payload.conventions.capitalization}`,
@@ -78,7 +78,10 @@ async function main() {
         num(i.finalPayment).padStart(9),
         pct(i.tem, 3).padStart(7),
         pct(i.tea, 2).padStart(7),
-        (i.volumeAmount === null ? '—' : compactArs.format(i.volumeAmount)).padStart(9),
+        (() => {
+          const v = i.volumeAmount ?? i.volumeNominal;
+          return (v === null ? '—' : compactArs.format(v)).padStart(9);
+        })(),
         (i.orderCount === null ? '—' : String(i.orderCount)).padStart(6),
         (i.lastTradeTime ?? '—').padStart(9),
       ].join(' '),

@@ -54,9 +54,12 @@ export function Tablero({ slug, universos }: Props) {
     [datos],
   );
 
-  // Timestamp del dato, no de la consulta: el más reciente de los trades.
+  // Timestamp del dato, no de la consulta. En rueda es la hora del último
+  // trade; con el mercado cerrado, el precio es el cierre de la rueda y no
+  // hay hora que mostrar.
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
+    if (datos.session === 'cierre') return 'cierre de rueda';
     const horas = datos.instruments
       .map((i) => i.lastTradeTime)
       .filter((h): h is string => Boolean(h));
@@ -99,9 +102,21 @@ export function Tablero({ slug, universos }: Props) {
         <div className={estilos.sello}>
           {datos && (
             <>
-              <Dato etiqueta="Rueda" valor={fechaCorta(datos.tradeDate)} />
+              <div className={estilos.selloItem}>
+                <span className={estilos.selloEtiqueta}>Rueda</span>
+                <span className={estilos.selloValor}>
+                  {fechaCorta(datos.tradeDate)}
+                  <span className={estilos.estado} data-sesion={datos.session}>
+                    {datos.session === 'cierre' ? 'cerrada' : 'en curso'}
+                  </span>
+                </span>
+              </div>
               <Dato etiqueta="Liquidación" valor={fechaCorta(datos.settlementDate)} />
-              <Dato etiqueta="Último dato" valor={ultimoDato ?? guion} mono />
+              <Dato
+                etiqueta="Último dato"
+                valor={ultimoDato ?? guion}
+                mono={datos.session !== 'cierre'}
+              />
               <Dato
                 etiqueta="Fuente"
                 valor={datos.sourceFallbackUsed ? `${datos.source} · respaldo` : datos.source}
