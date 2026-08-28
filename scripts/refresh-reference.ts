@@ -21,6 +21,16 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), '../src/lib/reference/
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * Pausa entre pedidos de ficha.
+ *
+ * Este script recorre ~50 candidatos de a uno. Con pausas cortas es la forma
+ * más rápida de ganarse un bloqueo por IP de BYMA, que no avisa: deja de
+ * completar el handshake TCP y tarda horas en soltar. Un segundo por pedido
+ * son menos de dos minutos en total y no molesta a nadie.
+ */
+const PAUSA_MS = 1_000;
+
+/**
  * Extrae la TEM de emisión del texto libre del campo `interes`.
  *
  * BYMA lo escribe de al menos tres formas distintas:
@@ -79,7 +89,7 @@ async function main() {
     } catch (err) {
       console.warn(`  ${symbol}: error de ficha (${(err as Error).message})`);
     }
-    await sleep(250);
+    await sleep(PAUSA_MS);
 
     if (!ficha) {
       unresolved.push(symbol);

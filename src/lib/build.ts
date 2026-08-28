@@ -291,24 +291,37 @@ export async function buildUniverse(
 
   instruments.sort((a, b) => a.daysToMaturity - b.daysToMaturity);
 
-  // Un ticker que cotiza, tiene forma de especie del universo y no está
-  // clasificado es una emisión nueva. No lo inventamos ni lo escondemos:
-  // se avisa para correr refresh:reference.
-  const unclassified = [...quotes.keys()].filter(
-    (s) =>
-      BASE_TICKER.test(s) &&
-      !universe.reference.has(s) &&
-      !universe.knownNonMembers.has(s) &&
-      !universe.unresolved.includes(s),
-  );
-  if (unclassified.length > 0) {
+  // Un ticker vivo, con forma de especie del universo y sin clasificar, es una
+  // emisión nueva: se avisa para correr refresh:reference.
+  //
+  // "Vivo" es la parte que importa. BYMA sigue listando especies mucho después
+  // de su vencimiento —S10N5 y M10N5 vencieron en noviembre de 2025 y seguían
+  // apareciendo en el panel—, y no hay nada que clasificar en un papel muerto:
+  // ya no pertenece a ninguna curva. Si la fuente no informa vencimiento no
+  // tenemos con qué juzgarlo, y callar es mejor que avisar de más.
+  const vivoYDesconocido = ([symbol, quote]: [string, Quote]) =>
+    BASE_TICKER.test(symbol) &&
+    !universe.reference.has(symbol) &&
+    !universe.knownNonMembers.has(symbol) &&
+    quote.maturityDate !== null &&
+    quote.maturityDate > tradeDateIso;
+
+  const sinClasificar = [...quotes.entries()]
+    .filter((entrada) => vivoYDesconocido(entrada) && !universe.unresolved.includes(entrada[0]))
+    .map(([symbol]) => symbol);
+  if (sinClasificar.length > 0) {
     warnings.push(
-      `Tickers sin clasificar en la referencia: ${unclassified.join(', ')}. Correr "npm run refresh:reference".`,
+      `Tickers sin clasificar en la referencia: ${sinClasificar.join(', ')}. Correr "npm run refresh:reference".`,
     );
   }
-  if (universe.unresolved.length > 0) {
+
+  const sinResolverVivos = universe.unresolved.filter((symbol) => {
+    const q = quotes.get(symbol);
+    return q?.maturityDate != null && q.maturityDate > tradeDateIso;
+  });
+  if (sinResolverVivos.length > 0) {
     warnings.push(
-      `Tickers candidatos que la referencia no pudo resolver: ${universe.unresolved.join(', ')}.`,
+      `Tickers candidatos que la referencia no pudo resolver: ${sinResolverVivos.join(', ')}.`,
     );
   }
 
