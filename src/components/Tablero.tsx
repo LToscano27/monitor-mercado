@@ -21,6 +21,24 @@ const REFRESCO_EN_RUEDA_MS = 20_000;
 const REFRESCO_CERRADO_MS = 300_000;
 
 /**
+ * Retraso con el que BYMA publica su feed gratuito.
+ *
+ * Medido cinco veces contra el reloj del propio servidor de BYMA: 20 min 22 s,
+ * 20 min 53 s, 20 min 23 s, 20 min 54 s y 20 min 25 s. Constante, sin
+ * tendencia a crecer; la oscilación de medio minuto es porque el feed se
+ * actualiza en tandas de aproximadamente un minuto.
+ */
+const RETRASO_BYMA_MS = 20 * 60_000;
+
+const HORA_PLAZA = new Intl.DateTimeFormat('es-AR', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+/**
  * A un día hábil o menos del vencimiento, la tasa implícita deja de ser
  * información: el plazo es tan corto que un centavo de precio la mueve casi un
  * punto básico por cada día que falta. Esos papeles entran a la pantalla igual
@@ -115,26 +133,25 @@ export function Tablero({ slug, universos }: Props) {
   );
 
   /**
-   * Momento al que corresponde la foto completa.
+   * Reloj de la foto: la hora de plaza menos el retraso del feed, corriendo
+   * segundo a segundo.
    *
-   * Es el trade más reciente de todo el panel, y vale para cada instrumento,
-   * no sólo para el que operó último: el último precio operado de un papel es
-   * su precio vigente hasta que haya otro. Si S31G6 no operó entre las 12:26 y
-   * las 12:36, su precio a las 12:36 era el de las 12:26.
-   *
-   * Se toma observado y no calculado como "ahora menos el retraso". Las dos
-   * cuentas dan casi lo mismo mientras el feed va al día, pero si se traba, el
-   * observado deja de avanzar y se nota, mientras que el calculado seguiría
-   * mostrando una hora fresca sobre datos viejos.
+   * Vale para todos los instrumentos, no sólo para el que operó último. El
+   * último precio operado de un papel es su precio vigente hasta que haya
+   * otro: si S31G6 no operó entre las 12:26 y las 12:36, su precio a las 12:36
+   * era el de las 12:26. Por eso una sola hora describe la pantalla entera.
    */
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
     if (datos.session === 'cierre') return 'cierre de rueda';
-    const horas = datos.instruments
-      .map((i) => i.lastTradeTime)
-      .filter((h): h is string => Boolean(h));
-    return horas.length ? horas.sort().at(-1)! : null;
-  }, [datos]);
+    return HORA_PLAZA.format(new Date(ahora - RETRASO_BYMA_MS));
+  }, [datos, ahora]);
 
   if (error && !datos) {
     return (
