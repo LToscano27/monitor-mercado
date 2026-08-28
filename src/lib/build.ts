@@ -4,6 +4,7 @@ import {
   daysBetween,
   isWithinTradingHours,
   marketToday,
+  momentoVisible,
   parseIsoDate,
   settlementDate,
   toIsoDate,
@@ -122,7 +123,7 @@ async function fetchQuotes(
     // rueda—, y sólo cambia cómo se los llama.
     return {
       quotes: panel,
-      session: isWithinTradingHours(ahora) ? 'intradiaria' : 'cierre',
+      session: isWithinTradingHours(momentoVisible(ahora)) ? 'intradiaria' : 'cierre',
       warnings,
     };
   }
@@ -164,7 +165,7 @@ export async function buildUniverse(
   const tradeDateIso =
     session === 'cierre' && fechasCierre.length
       ? fechasCierre[fechasCierre.length - 1]
-      : toIsoDate(marketToday(now));
+      : toIsoDate(marketToday(momentoVisible(now)));
   const tradeDate = parseIsoDate(tradeDateIso);
   const settlement = settlementDate(tradeDate);
 

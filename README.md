@@ -106,8 +106,21 @@ usó:
 
 El panel manda mientras tenga datos, esté el mercado abierto o cerrado: es la
 única fuente que trae el **volumen efectivo** de la rueda. BYMA lo conserva
-horas después del cierre y recién de madrugada rota a la sesión siguiente. La
-etiqueta de sesión sale del horario de rueda, no de si hay datos.
+horas después del cierre y recién de madrugada rota a la sesión siguiente.
+
+La etiqueta de sesión sale del horario de rueda, no de si hay datos, y se lee
+con el **reloj visible** — hora de plaza menos el retraso del feed — porque
+toda la pantalla vive corrida hacia atrás. A las 17:05 reales la foto es de las
+16:45 y el mercado sigue operando en lo que se ve: los precios cambian hasta
+las 17:20 reales, cuando el feed termina de publicar la última media hora.
+
+| hora real | reloj en pantalla | estado |
+|---|---|---|
+| 10:55 | 10:35 | cerrada |
+| 11:25 | 11:05 | en curso |
+| 17:05 | 16:45 | en curso |
+| 17:19 | 16:59 | en curso |
+| 17:21 | 17:01 | cerrada |
 
 La serie histórica sólo trae volumen nominal, así que en esa rama el monto
 efectivo se reconstruye con el precio de cierre. En el panel la identidad
