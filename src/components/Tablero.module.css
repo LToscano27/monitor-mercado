@@ -99,6 +99,11 @@
   color: var(--tinta);
 }
 
+/* Sin confirmar: rayado, para que no se lea como un estado normal. */
+.estado[data-sesion='desconocida'] {
+  border-style: dashed;
+}
+
 /* ── controles ─────────────────────────────────────────────── */
 
 .controles {

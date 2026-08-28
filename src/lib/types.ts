@@ -110,11 +110,15 @@ export interface UniverseResponse {
   /** Rueda a la que corresponden los precios. */
   tradeDate: IsoDate;
   /**
-   * 'intradiaria' cuando el panel en vivo tiene datos de la rueda en curso;
-   * 'cierre' cuando el mercado está cerrado y los precios son los de cierre
-   * de la última rueda.
+   * A qué rueda corresponden los precios:
+   *  - 'intradiaria'  panel en vivo, rueda en curso;
+   *  - 'cierre'       cierre de la última rueda;
+   *  - 'desconocida'  hay precios pero no se pudo establecer de cuándo son.
+   *
+   * 'desconocida' no es un detalle: un precio sin momento no se puede leer
+   * como mercado. La interfaz tiene que decirlo, no suponer.
    */
-  session: 'intradiaria' | 'cierre';
+  session: 'intradiaria' | 'cierre' | 'desconocida';
   /** Fecha de liquidación T+1 usada para contar días. */
   settlementDate: IsoDate;
   /** Momento en que nuestro backend trajo el dato. */
