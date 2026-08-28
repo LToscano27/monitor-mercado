@@ -7,6 +7,7 @@ import { SelectorInstrumentos } from './SelectorInstrumentos';
 import { TablaPrecios } from './TablaPrecios';
 import { SelectorTema } from './SelectorTema';
 import { fechaCorta, guion } from '@/lib/format';
+import { momentoVisible } from '@/lib/conventions';
 import estilos from './Tablero.module.css';
 
 /**
@@ -19,16 +20,6 @@ import estilos from './Tablero.module.css';
  */
 const REFRESCO_EN_RUEDA_MS = 20_000;
 const REFRESCO_CERRADO_MS = 300_000;
-
-/**
- * Retraso con el que BYMA publica su feed gratuito.
- *
- * Medido cinco veces contra el reloj del propio servidor de BYMA: 20 min 22 s,
- * 20 min 53 s, 20 min 23 s, 20 min 54 s y 20 min 25 s. Constante, sin
- * tendencia a crecer; la oscilación de medio minuto es porque el feed se
- * actualiza en tandas de aproximadamente un minuto.
- */
-const RETRASO_BYMA_MS = 20 * 60_000;
 
 const HORA_PLAZA = new Intl.DateTimeFormat('es-AR', {
   timeZone: 'America/Argentina/Buenos_Aires',
@@ -144,7 +135,7 @@ export function Tablero({ slug, universos }: Props) {
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
     if (datos.session === 'cierre') return 'cierre de rueda';
-    return HORA_PLAZA.format(new Date(ahora - RETRASO_BYMA_MS));
+    return HORA_PLAZA.format(momentoVisible(new Date(ahora)));
   }, [datos, ahora]);
 
   if (error && !datos) {

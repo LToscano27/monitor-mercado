@@ -81,6 +81,29 @@ export function marketToday(now: Date = new Date()): Date {
 }
 
 /**
+ * Retraso con el que BYMA publica su feed gratuito.
+ *
+ * Medido cinco veces contra el reloj del propio servidor de BYMA: 20 min 22 s,
+ * 20 min 53 s, 20 min 23 s, 20 min 54 s y 20 min 25 s. Constante, sin
+ * tendencia a crecer; la oscilación de medio minuto es porque el feed se
+ * actualiza en tandas de aproximadamente un minuto.
+ */
+export const FEED_DELAY_MS = 20 * 60_000;
+
+/**
+ * El momento al que corresponde todo lo que se muestra.
+ *
+ * Toda la pantalla vive corrida hacia atrás por el retraso del feed, así que
+ * el estado de la rueda tiene que leerse con el mismo reloj. A las 17:05 de
+ * hora real la foto es de las 16:45 y el mercado todavía está operando en lo
+ * que se ve: los precios siguen cambiando hasta las 17:20 reales, cuando el
+ * feed termina de publicar la última media hora de la rueda.
+ */
+export function momentoVisible(now: Date = new Date()): Date {
+  return new Date(now.getTime() - FEED_DELAY_MS);
+}
+
+/**
  * Horario de rueda de la plaza local, en hora de Buenos Aires.
  *
  * Sirve para distinguir una rueda en curso de una ya cerrada. No alcanza con
