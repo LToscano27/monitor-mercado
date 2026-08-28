@@ -1,4 +1,5 @@
 import {
+  businessDaysBetween,
   CONVENTIONS_META,
   daysBetween,
   marketToday,
@@ -178,10 +179,11 @@ export async function buildUniverse(
     const settlementBasis: InstrumentRow['settlementBasis'] = quote?.settlement ?? 'T+1';
     const liquidacion = settlementBasis === 'contado' ? tradeDate : settlement;
     const daysToMaturity = daysBetween(liquidacion, maturity);
+    const businessDaysToMaturity = businessDaysBetween(liquidacion, maturity);
 
     if (!quote) {
       instruments.push(
-        emptyRow(ref, daysToMaturity, settlementBasis, {
+        emptyRow(ref, daysToMaturity, businessDaysToMaturity, settlementBasis, {
           code: 'STALE_PRICE',
           level: 'bad',
           message:
@@ -240,6 +242,7 @@ export async function buildUniverse(
       name: ref.name,
       maturityDate: ref.maturityDate,
       daysToMaturity,
+      businessDaysToMaturity,
       settlementBasis,
       lastPrice: price,
       priceBasis,
@@ -314,6 +317,7 @@ export async function buildUniverse(
 function emptyRow(
   ref: ZeroCouponReference,
   daysToMaturity: number,
+  businessDaysToMaturity: number,
   settlementBasis: InstrumentRow['settlementBasis'],
   flag: QualityFlag,
 ): InstrumentRow {
@@ -322,6 +326,7 @@ function emptyRow(
     name: ref.name,
     maturityDate: ref.maturityDate,
     daysToMaturity,
+    businessDaysToMaturity,
     settlementBasis,
     lastPrice: null,
     priceBasis: null,

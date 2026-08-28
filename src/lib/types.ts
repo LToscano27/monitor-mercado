@@ -75,6 +75,14 @@ export interface InstrumentRow {
    */
   daysToMaturity: number;
   /**
+   * Días hábiles desde la liquidación hasta el vencimiento.
+   *
+   * Es el que decide si el papel entra a la curva por defecto: a un hábil o
+   * menos, su tasa implícita es ruido — un centavo de precio le mueve la TEM
+   * casi un punto básico por cada día que le falta.
+   */
+  businessDaysToMaturity: number;
+  /**
    * Con qué plazo de liquidación se contaron esos días.
    *
    * Casi siempre 'T+1', el plazo de referencia del mercado. Cuando el T+1

@@ -11,6 +11,18 @@ import estilos from './Tablero.module.css';
 
 const REFRESCO_MS = 60_000;
 
+/**
+ * A un día hábil o menos del vencimiento, la tasa implícita deja de ser
+ * información: el plazo es tan corto que un centavo de precio la mueve casi un
+ * punto básico por cada día que falta. Esos papeles entran a la pantalla igual
+ * —en la tabla, con su precio y su variación— pero salen de la curva por
+ * defecto, para no torcer el ajuste con un punto que es ruido.
+ *
+ * Es un default, no una regla: la ficha del papel sigue ahí y con un clic
+ * vuelve.
+ */
+const HABILES_MINIMOS_EN_CURVA = 2;
+
 const ETIQUETA_SESION: Record<UniverseResponse['session'], string> = {
   intradiaria: 'en curso',
   cierre: 'cerrada',
@@ -27,15 +39,30 @@ export function Tablero({ slug, universos }: Props) {
   const [cargando, setCargando] = useState(true);
   const [metrica, setMetrica] = useState<Metrica>('tea');
   const [ocultarMarcados, setOcultarMarcados] = useState(false);
-  const [excluidos, setExcluidos] = useState<ReadonlySet<string>>(new Set());
+  // Sólo guardamos lo que el lector decidió a mano. El resto lo define el
+  // default, así que un papel que se acerca al vencimiento sale solo de la
+  // curva sin pisar ninguna elección previa.
+  const [decisiones, setDecisiones] = useState<Record<string, 'dentro' | 'fuera'>>({});
 
-  const alternarInstrumento = useCallback((ticker: string) => {
-    setExcluidos((prev) => {
-      const siguiente = new Set(prev);
-      if (!siguiente.delete(ticker)) siguiente.add(ticker);
-      return siguiente;
-    });
-  }, []);
+  const excluidos = useMemo(() => {
+    const fuera = new Set<string>();
+    for (const i of datos?.instruments ?? []) {
+      const decision = decisiones[i.ticker];
+      const porDefecto = i.businessDaysToMaturity < HABILES_MINIMOS_EN_CURVA;
+      if (decision ? decision === 'fuera' : porDefecto) fuera.add(i.ticker);
+    }
+    return fuera;
+  }, [datos, decisiones]);
+
+  const alternarInstrumento = useCallback(
+    (ticker: string) => {
+      setDecisiones((prev) => ({
+        ...prev,
+        [ticker]: excluidos.has(ticker) ? 'dentro' : 'fuera',
+      }));
+    },
+    [excluidos],
+  );
 
   const traer = useCallback(async () => {
     setCargando(true);
@@ -182,7 +209,13 @@ export function Tablero({ slug, universos }: Props) {
                 excluidos={excluidos}
                 metrica={metrica}
                 onToggle={alternarInstrumento}
-                onTodos={() => setExcluidos(new Set())}
+                onTodos={() =>
+                  setDecisiones(
+                    Object.fromEntries(
+                      datos.instruments.map((i) => [i.ticker, 'dentro' as const]),
+                    ),
+                  )
+                }
               />
               <PanelCurva
                 instrumentos={datos.instruments}

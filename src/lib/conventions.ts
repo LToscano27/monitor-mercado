@@ -81,6 +81,23 @@ export function marketToday(now: Date = new Date()): Date {
 }
 
 /**
+ * Días hábiles entre dos fechas, sin contar la de partida.
+ *
+ * Es lo que dice cuánta vida operativa le queda a un papel: dos fechas a tres
+ * días calendario pueden tener un solo hábil en el medio si hay fin de semana.
+ */
+export function businessDaysBetween(from: Date, to: Date): number {
+  if (to <= from) return 0;
+  let habiles = 0;
+  let cursor = addDays(from, 1);
+  while (cursor <= to) {
+    if (isBusinessDay(cursor)) habiles += 1;
+    cursor = addDays(cursor, 1);
+  }
+  return habiles;
+}
+
+/**
  * Fecha de liquidación T+1: el siguiente día hábil posterior a la rueda.
  * Si la rueda cae en día no hábil, primero se rolea al hábil anterior.
  */
