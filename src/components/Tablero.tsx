@@ -114,9 +114,19 @@ export function Tablero({ slug, universos }: Props) {
     [datos],
   );
 
-  // Timestamp del dato, no de la consulta. En rueda es la hora del último
-  // trade; con el mercado cerrado, el precio es el cierre de la rueda y no
-  // hay hora que mostrar.
+  /**
+   * Momento al que corresponde la foto completa.
+   *
+   * Es el trade más reciente de todo el panel, y vale para cada instrumento,
+   * no sólo para el que operó último: el último precio operado de un papel es
+   * su precio vigente hasta que haya otro. Si S31G6 no operó entre las 12:26 y
+   * las 12:36, su precio a las 12:36 era el de las 12:26.
+   *
+   * Se toma observado y no calculado como "ahora menos el retraso". Las dos
+   * cuentas dan casi lo mismo mientras el feed va al día, pero si se traba, el
+   * observado deja de avanzar y se nota, mientras que el calculado seguiría
+   * mostrando una hora fresca sobre datos viejos.
+   */
   const ultimoDato = useMemo(() => {
     if (!datos) return null;
     if (datos.session === 'cierre') return 'cierre de rueda';
@@ -172,7 +182,7 @@ export function Tablero({ slug, universos }: Props) {
                 </span>
               </div>
               <Dato
-                etiqueta="Último dato"
+                etiqueta="Datos al"
                 valor={ultimoDato ?? guion}
                 mono={datos.session !== 'cierre'}
               />
@@ -217,7 +227,9 @@ export function Tablero({ slug, universos }: Props) {
               </span>
             </label>
 
-            <p className={estilos.nota}>Cotizaciones a 24 horas</p>
+            <p className={estilos.nota}>
+              Cotizaciones a 24 horas · BYMA publica con ~20 min de retraso
+            </p>
           </div>
 
           <div className={estilos.contenido} data-cargando={cargando || undefined}>
