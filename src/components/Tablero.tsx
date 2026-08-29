@@ -6,7 +6,7 @@ import { PanelCurva, type Metrica } from './PanelCurva';
 import { SelectorInstrumentos } from './SelectorInstrumentos';
 import { TablaPrecios } from './TablaPrecios';
 import { SelectorTema } from './SelectorTema';
-import { fechaCorta, guion } from '@/lib/format';
+import { fechaCorta } from '@/lib/format';
 import { momentoVisible } from '@/lib/conventions';
 import estilos from './Tablero.module.css';
 
@@ -132,11 +132,15 @@ export function Tablero({ slug, universos }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  const ultimoDato = useMemo(() => {
-    if (!datos) return null;
-    if (datos.session === 'cierre') return 'cierre de rueda';
-    return HORA_PLAZA.format(momentoVisible(new Date(ahora)));
-  }, [datos, ahora]);
+  /*
+   * El reloj corre siempre, con la rueda abierta o cerrada.
+   *
+   * Marca el momento al que corresponde lo que se ve, y ese momento sigue
+   * avanzando aunque el mercado ya no opere: a las 19:00 la foto es de las
+   * 18:40 y los precios son los del cierre. Que la rueda esté cerrada ya lo
+   * dice la chapita de al lado; el reloj no tiene que repetirlo ni frenarse.
+   */
+  const hora = useMemo(() => HORA_PLAZA.format(momentoVisible(new Date(ahora))), [ahora]);
 
   if (error && !datos) {
     return (
@@ -183,11 +187,7 @@ export function Tablero({ slug, universos }: Props) {
                   </span>
                 </span>
               </div>
-              <Dato
-                etiqueta="Hora"
-                valor={ultimoDato ?? guion}
-                mono={datos.session !== 'cierre'}
-              />
+              <Dato etiqueta="Hora" valor={hora} mono />
               <Dato etiqueta="Fuente" valor={datos.source.toUpperCase()} />
             </>
           )}
