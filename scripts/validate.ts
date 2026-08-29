@@ -6,6 +6,7 @@
  *   npm run validate -- --json        -> JSON crudo del endpoint
  *   npm run validate -- --universe=tasa-fija
  */
+import { monto } from '../src/lib/format';
 import { buildUniverse } from '../src/lib/build';
 import { getUniverse, listUniverses } from '../src/lib/universes';
 
@@ -15,11 +16,6 @@ const slug = args.find((a) => a.startsWith('--universe='))?.split('=')[1] ?? 'ta
 
 const pct = (v: number | null, d = 2) => (v === null ? '—' : (v * 100).toFixed(d));
 const num = (v: number | null, d = 3) => (v === null ? '—' : v.toFixed(d));
-
-const compactArs = new Intl.NumberFormat('es-AR', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-});
 
 const QUALITY_MARK = { ok: ' ', warn: '!', bad: 'X' } as const;
 
@@ -58,7 +54,7 @@ async function main() {
     'PAGO FIN'.padStart(9),
     'TEM%'.padStart(7),
     'TEA%'.padStart(7),
-    'VOLUMEN'.padStart(9),
+    'VOLUMEN'.padStart(11),
     'OPS'.padStart(6),
     'HORA'.padStart(9),
   ].join(' ');
@@ -78,10 +74,7 @@ async function main() {
         num(i.finalPayment).padStart(9),
         pct(i.tem).padStart(8),
         pct(i.tea, 2).padStart(7),
-        (() => {
-          const v = i.volumeAmount ?? i.volumeNominal;
-          return (v === null ? '—' : compactArs.format(v)).padStart(9);
-        })(),
+        monto(i.volumeAmount ?? i.volumeNominal).padStart(11),
         (i.orderCount === null ? '—' : String(i.orderCount)).padStart(6),
         (i.lastTradeTime ?? '—').padStart(9),
       ].join(' '),

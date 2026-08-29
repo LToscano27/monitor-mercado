@@ -59,13 +59,11 @@ export function entero(value: number | null): string {
 export function monto(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return guion;
   const abs = Math.abs(value);
-  const fmt = (n: number, d: number) =>
-    n.toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
-  if (abs >= 1e12) return `${fmt(value / 1e12, 1)} B`;
-  if (abs >= 1e9) return `${fmt(value / 1e9, 1)} MM`;
-  if (abs >= 1e6) return `${fmt(value / 1e6, 1)} M`;
-  if (abs >= 1e3) return `${fmt(value / 1e3, 0)} k`;
-  return fmt(value, 0);
+  if (abs >= 1e12) return `${conComa(value / 1e12)} B`;
+  if (abs >= 1e9) return `${conComa(value / 1e9)} MM`;
+  if (abs >= 1e6) return `${conComa(value / 1e6)} M`;
+  if (abs >= 1e3) return `${conComa(value / 1e3)} k`;
+  return conComa(value);
 }
 
 /** '2026-11-13' -> '13 nov 26' */
