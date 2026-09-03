@@ -21,9 +21,12 @@ export const TASA_FIJA_PANELS: readonly BymaPanel[] = ['lebacs', 'public-bonds']
 export const CANDIDATE_SYMBOL = /^[STM][A-Z0-9]{2,3}[0-9]$/;
 
 /**
- * TEM de emisión para instrumentos cuya ficha técnica de BYMA no la informa
- * (el campo `interes` viene sin el porcentaje). Valores provistos y
- * confirmados por el usuario contra las condiciones de emisión.
+ * Override manual de la TEM de emisión.
+ *
+ * Pisa tanto a la ficha de BYMA como al resultado de licitación: es la vía
+ * para corregir a mano cuando ninguna de las dos automáticas sirve. Hoy la
+ * usan dos letras cuya ficha vino sin el porcentaje y cuya licitación quedó
+ * fuera de la ventana de novedades que mira el scraper de Finanzas.
  *
  * Los instrumentos resueltos por acá salen marcados con temSource 'manual'
  * en la respuesta del endpoint.
@@ -31,5 +34,4 @@ export const CANDIDATE_SYMBOL = /^[STM][A-Z0-9]{2,3}[0-9]$/;
 export const MANUAL_ISSUE_TEM: Record<string, number> = {
   S13N6: 0.021,
   S15S6: 0.0199,
-  S29E7: 0.0225,
 };

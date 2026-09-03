@@ -68,15 +68,24 @@ export function parsearTemDeEmision(ficha: BymaFicha): number | null {
 
 /**
  * Arma la referencia de una especie a partir de su ficha. Devuelve null si no
- * pertenece al universo o si no se pudo establecer la TEM de emisión ni por
- * ficha ni por la tabla de overrides.
+ * pertenece al universo o si no se pudo establecer la TEM de emisión por
+ * ninguna de las tres vías.
+ *
+ * El orden de precedencia es deliberado: la ficha de BYMA es la fuente
+ * primaria; la tabla de overrides existe para poder corregir a mano y por eso
+ * pisa a lo demás; la licitación entra última, cuando BYMA no publicó la tasa
+ * y nadie la cargó, que es el caso de toda letra recién emitida.
  */
-export function referenciaDesdeFicha(ficha: BymaFicha): ZeroCouponReference | null {
+export function referenciaDesdeFicha(
+  ficha: BymaFicha,
+  temDeLicitacion: number | null = null,
+): ZeroCouponReference | null {
   if (!clasificar(ficha).esMiembro) return null;
 
+  const manual = MANUAL_ISSUE_TEM[ficha.symbol] ?? null;
   const deFicha = parsearTemDeEmision(ficha);
-  const issueTem = deFicha ?? MANUAL_ISSUE_TEM[ficha.symbol] ?? null;
-  if (issueTem === null) return null;
+  const issueTem = manual ?? deFicha ?? temDeLicitacion;
+  if (issueTem === null || issueTem === undefined) return null;
 
   return {
     symbol: ficha.symbol,
@@ -85,6 +94,6 @@ export function referenciaDesdeFicha(ficha: BymaFicha): ZeroCouponReference | nu
     issueDate: ficha.fechaEmision.slice(0, 10),
     maturityDate: ficha.fechaVencimiento.slice(0, 10),
     issueTem,
-    temSource: deFicha !== null ? 'byma-ficha' : 'manual',
+    temSource: manual !== null ? 'manual' : deFicha !== null ? 'byma-ficha' : 'licitacion',
   };
 }
