@@ -33,11 +33,14 @@
   shape-rendering: crispEdges;
 }
 
+/* Los valores de los ejes van en negrita, como los títulos de la tabla. En
+   tinta plena: en negrita sobre el gris más flojo se empastan. */
 .marcaEje {
-  fill: var(--tinta-3);
+  fill: var(--tinta);
   font-family: var(--fuente-mono);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
   text-anchor: end;
 }
 
@@ -51,10 +54,11 @@
 }
 
 .marcaX {
-  fill: var(--tinta-3);
+  fill: var(--tinta);
   font-family: var(--fuente-mono);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
   text-anchor: middle;
 }
 
