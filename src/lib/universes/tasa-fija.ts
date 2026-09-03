@@ -1,5 +1,6 @@
 import { DEFAULT_THRESHOLDS } from '../quality';
 import { fetchFicha } from '../sources/byma';
+import { temDeLicitacion } from '../sources/finanzas';
 import { estaCacheado, memo } from '../cache';
 import { clasificar, referenciaDesdeFicha } from './tasa-fija-clasificador';
 import { valuate } from '../pricing/zero-coupon';
@@ -87,11 +88,20 @@ export const tasaFija: UniverseDefinition = {
       // problema: simplemente no es de acá y se ignora en silencio.
       if (!clasificar(ficha).esMiembro) continue;
 
-      const referencia = referenciaDesdeFicha(ficha);
+      // Es del universo, pero puede que BYMA haya publicado la ficha sin la
+      // tasa: pasa con casi toda letra recién emitida. Sin ese dato no hay
+      // pago al vencimiento y por lo tanto no hay rendimiento, así que antes
+      // de dejarla afuera se la busca en el resultado de la licitación que la
+      // adjudicó, que es donde la publica el Tesoro.
+      let referencia = referenciaDesdeFicha(ficha);
+      if (!referencia) {
+        const deLicitacion = await temDeLicitacion(ficha.fechaVencimiento.slice(0, 10), signal);
+        referencia = referenciaDesdeFicha(ficha, deLicitacion);
+      }
+
       if (referencia) nuevas.push(referencia);
-      // Es del universo pero BYMA no publica su TEM de emisión: sin ese dato
-      // no hay pago al vencimiento y no hay rendimiento posible. Se avisa
-      // para cargarla a mano.
+      // No apareció por ningún lado. Se avisa para cargarla a mano: es el
+      // único camino que queda y alguien tiene que enterarse.
       else sinResolver.push({ symbol, motivo: 'sin TEM de emisión; cargarla en MANUAL_ISSUE_TEM' });
     }
     return { nuevas, sinResolver };

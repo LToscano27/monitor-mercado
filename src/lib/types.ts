@@ -45,7 +45,7 @@ export interface ZeroCouponReference {
   /** TEM de emisión, en decimal (0.021 = 2,10%). */
   issueTem: number;
   /** De dónde salió issueTem. Viaja a la respuesta para trazabilidad. */
-  temSource: 'byma-ficha' | 'manual';
+  temSource: 'byma-ficha' | 'manual' | 'licitacion';
 }
 
 export type QualityLevel = 'ok' | 'warn' | 'bad';
