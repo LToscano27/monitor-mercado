@@ -31,4 +31,5 @@ export const CANDIDATE_SYMBOL = /^[STM][A-Z0-9]{2,3}[0-9]$/;
 export const MANUAL_ISSUE_TEM: Record<string, number> = {
   S13N6: 0.021,
   S15S6: 0.0199,
+  S29E7: 0.0225,
 };
