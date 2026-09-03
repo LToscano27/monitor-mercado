@@ -247,12 +247,7 @@ export function Tablero({ slug, universos }: Props) {
               />
             </section>
 
-            <section className={estilos.panel} aria-labelledby="t-tabla">
-              <div className={estilos.panelCabecera}>
-                <h2 id="t-tabla" className={estilos.panelTitulo}>
-                  Precios
-                </h2>
-              </div>
+            <section className={estilos.panel} aria-label="Precios">
               <TablaPrecios instrumentos={datos.instruments} />
             </section>
           </div>
