@@ -191,23 +191,6 @@
   letter-spacing: -0.005em;
 }
 
-.avisos {
-  padding: 13px 16px;
-  background: var(--panel-alt);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  color: var(--tinta-2);
-  font-size: 12px;
-}
-
-.avisos p {
-  margin: 0;
-}
-
-.avisos p + p {
-  margin-top: 6px;
-}
-
 /* ── estados ───────────────────────────────────────────────── */
 
 .esperando {

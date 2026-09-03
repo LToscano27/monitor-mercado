@@ -255,14 +255,6 @@ export function Tablero({ slug, universos }: Props) {
               </div>
               <TablaPrecios instrumentos={datos.instruments} />
             </section>
-
-            {datos.warnings.length > 0 && (
-              <section className={estilos.avisos} aria-label="Avisos del universo">
-                {datos.warnings.map((w) => (
-                  <p key={w}>{w}</p>
-                ))}
-              </section>
-            )}
           </div>
         </>
       )}
