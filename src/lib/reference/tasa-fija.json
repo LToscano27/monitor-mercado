@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T23:25:53.278Z",
+  "generatedAt": "2026-09-24T19:45:32.467Z",
   "source": "BYMA ficha técnica (bnown/fichatecnica/especies/general)",
   "instruments": [
     {
@@ -12,15 +12,6 @@
       "temSource": "manual"
     },
     {
-      "symbol": "S15S6",
-      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 15 DE SEPTIEMBRE DE 2026",
-      "isin": "AR0614758420",
-      "issueDate": "2026-05-29",
-      "maturityDate": "2026-09-15",
-      "issueTem": 0.0199,
-      "temSource": "manual"
-    },
-    {
       "symbol": "S16O6",
       "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 16 DE OCTUBRE DE 2026",
       "isin": "AR0183520128",
@@ -28,6 +19,15 @@
       "maturityDate": "2026-10-16",
       "issueTem": 0.020499999999999997,
       "temSource": "byma-ficha"
+    },
+    {
+      "symbol": "S29E7",
+      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 29 DE ENERO DE 2027",
+      "isin": "AR0048313164",
+      "issueDate": "2026-08-31",
+      "maturityDate": "2027-01-29",
+      "issueTem": 0.0225,
+      "temSource": "licitacion"
     },
     {
       "symbol": "S30N6",
@@ -54,15 +54,6 @@
       "issueDate": "2026-03-16",
       "maturityDate": "2026-09-30",
       "issueTem": 0.0253,
-      "temSource": "byma-ficha"
-    },
-    {
-      "symbol": "S31G6",
-      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 31 DE AGOSTO DE 2026",
-      "isin": "AR0960697990",
-      "issueDate": "2025-11-10",
-      "maturityDate": "2026-08-31",
-      "issueTem": 0.025,
       "temSource": "byma-ficha"
     },
     {
@@ -103,11 +94,6 @@
     }
   ],
   "nonMembers": [
-    {
-      "symbol": "M31G6",
-      "name": "LETRA DEL TESORO NACIONAL EN PESOS A TASA TAMAR CON VENCIMIENTO 31 DE AGOSTO DE 2026",
-      "reason": "tasa variable TAMAR"
-    },
     {
       "symbol": "SFD34",
       "name": "TÍTULOS DE DEUDA PUBLICA ¿ VENCIMIENTO 2034",
@@ -166,11 +152,6 @@
     {
       "symbol": "TTD26",
       "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA DUAL CON VENCIMIENTO 15 DE DICIEMBRE DE 2026",
-      "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
-    },
-    {
-      "symbol": "TTS26",
-      "name": "BONO DEL TESORO NACIONAL EN PESOS A TASA DUAL CON VENCIMIENTO 15 DE SEPTIEMBRE DE 2026",
       "reason": "no es cero cupón capitalizable (paga cupones o es otro tipo)"
     },
     {
