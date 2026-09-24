@@ -1,0 +1,84 @@
+# Mantiene al día src/lib/reference/tasa-fija.json.
+#
+# La referencia no hace falta para que la curva esté bien: el pipeline ignora
+# lo vencido y descubre en caliente lo que no conoce. Lo que se gana teniéndola
+# al día es no pagar ese descubrimiento —una ficha de BYMA más el resultado de
+# licitación de Finanzas— cada vez que arranca una instancia en frío.
+#
+# Corre lunes y jueves: las licitaciones del Tesoro son quincenales y una letra
+# nueva empieza a cotizar unos días después, así que dos pasadas por semana la
+# alcanzan sin insistirle a BYMA.
+name: Refrescar referencia
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4' # 12:00 UTC = 09:00 hora argentina
+  workflow_dispatch:
+
+# Sin esto el push del final da 403.
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-reference
+  cancel-in-progress: false
+
+jobs:
+  refrescar:
+    runs-on: ubuntu-latest
+    # El script pide ~50 fichas con una pausa de un segundo entre cada una para
+    # no ganarse un bloqueo de BYMA. El techo deja margen para eso y corta si
+    # la fuente se queda colgada.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Regenerar la referencia
+        run: npm run refresh:reference
+
+      # Red de contención: el archivo se sube sin que nadie lo mire, así que
+      # antes se comprueba que lo que quedó tenga sentido. Si BYMA contesta
+      # cualquier cosa —un panel vacío, una TEM absurda— el job falla y no se
+      # sube nada; la página sigue con la referencia anterior, que funciona.
+      - name: Verificar lo regenerado
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const ruta = "src/lib/reference/tasa-fija.json";
+            const { instruments } = JSON.parse(readFileSync(ruta, "utf8"));
+
+            if (instruments.length < 5) {
+              throw new Error(`Solo ${instruments.length} instrumentos: el panel vino corto.`);
+            }
+            for (const i of instruments) {
+              // Una TEM de emisión fuera de este rango no es un dato de mercado,
+              // es un parseo mal leído. El pago al vencimiento sale de acá.
+              if (!(i.issueTem > 0.001 && i.issueTem < 0.15)) {
+                throw new Error(`${i.symbol}: TEM de emisión ${i.issueTem} fuera de rango.`);
+              }
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(i.maturityDate)) {
+                throw new Error(`${i.symbol}: vencimiento ilegible (${i.maturityDate}).`);
+              }
+            }
+            console.log(`${instruments.length} instrumentos verificados.`);
+          '
+
+      - name: Subir si cambió
+        run: |
+          if git diff --quiet -- src/lib/reference/tasa-fija.json; then
+            echo "Sin cambios."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/reference/tasa-fija.json
+          git commit -m 'Refresca la referencia de tasa fija'
+          git push
