@@ -73,8 +73,14 @@ jobs:
 
       - name: Subir si cambió
         run: |
-          if git diff --quiet -- src/lib/reference/tasa-fija.json; then
-            echo "Sin cambios."
+          # El archivo trae un `generatedAt` que cambia en cada corrida aunque
+          # el contenido sea idéntico. Si se mirara el diff a secas, cada
+          # pasada dejaría un commit y un redeploy sin un solo dato nuevo, así
+          # que esa línea no cuenta como cambio.
+          diff=$(git diff -U0 -- src/lib/reference/tasa-fija.json)
+          cambios=$(printf '%s' "$diff" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -v generatedAt || true)
+          if [ -z "$cambios" ]; then
+            echo "Sin cambios de contenido."
             exit 0
           fi
           git config user.name 'github-actions[bot]'
