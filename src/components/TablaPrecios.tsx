@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type { InstrumentRow, VistaUniverso } from '@/lib/types';
 import {
+  anios,
   entero,
   fechaCorta,
   monto,
@@ -57,10 +58,10 @@ const DURATION: Columna = {
   clave: 'durationDays',
   titulo: 'Duration',
   ayuda:
-    'Duration de Macaulay en días, a la TIR real. En un cero cupón es el plazo al vencimiento; en uno que paga cupón, menos. Es el eje de la curva.',
+    'Duration de Macaulay en años, a la TIR real. En un cero cupón es el plazo al vencimiento; en uno que paga cupón, menos. Es el eje de la curva.',
   numerica: true,
   valor: (i) => i.durationDays,
-  celda: (i) => entero(i.durationDays === null ? null : Math.round(i.durationDays)),
+  celda: (i) => anios(i.durationDays),
 };
 
 const PRECIO: Columna = {
