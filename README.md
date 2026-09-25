@@ -1,13 +1,20 @@
 # Monitor Mercado — renta fija en pesos
 
-Curva, precios y variación diaria del universo de **tasa fija** del Tesoro
-argentino: LECAPs y BONCAPs, instrumentos cero cupón en pesos que capitalizan y
-pagan todo al vencimiento.
+Curvas, precios y variación diaria de la renta fija en pesos del Tesoro
+argentino:
+
+- **Tasa fija:** LECAPs y BONCAPs, cero cupón en pesos que capitalizan y
+  pagan todo al vencimiento.
+- **CER:** BONCER y LECER cero cupón, los CER con cupón (TX26, TX28, TX31),
+  los del canje (Discount, Par, Cuasipar) y los duales CER/TAMAR, con su
+  rendimiento real.
+- **Inflación breakeven:** la inflación mensual que el mercado descuenta al
+  comparar las dos curvas.
 
 **En producción: <https://monitor-mercado-4net.vercel.app>**
 
-La arquitectura está preparada para sumar después las curvas CER y dólar
-linked: el universo es un parámetro, no algo hardcodeado.
+La arquitectura está preparada para sumar la curva dólar linked: el universo
+es un parámetro, no algo hardcodeado.
 
 ## Correr en local
 
@@ -26,10 +33,13 @@ registro.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run validate` | corre el pipeline sin levantar Next e imprime una tabla legible |
 | `npm run validate -- --json` | JSON crudo del endpoint |
-| `npm run refresh:reference` | regenera la referencia estática desde la ficha técnica de BYMA |
+| `npm run validate -- --universe=tasa-cer` | lo mismo para la curva CER, con el detalle del ajuste por CER |
+| `npm run validate:breakeven` | tabla del breakeven por mes INDEC |
+| `npm run refresh:reference` | regenera la referencia estática de todos los universos desde la ficha técnica de BYMA |
 
-**No hacen falta variables de entorno.** Las dos fuentes de datos son públicas
-y sin autenticación.
+**No hacen falta variables de entorno.** Todas las fuentes son públicas y sin
+autenticación: BYMA para los precios, el BCRA para el CER y el INDEC (por la
+API de Series de Tiempo del Estado) para el IPC publicado.
 
 ## Rutas
 
@@ -37,6 +47,8 @@ y sin autenticación.
     /tasa-fija                     tablero
     GET /api/universe              catálogo de universos
     GET /api/universe/tasa-fija    universo completo, ya calculado
+    GET /api/universe/tasa-cer     ídem para la curva CER
+    GET /api/breakeven             inflación breakeven por mes INDEC
 
 ## Fuente de datos
 
@@ -294,11 +306,121 @@ ese dato no hay pago al vencimiento y por lo tanto no hay rendimiento. Esas
 especies quedan fuera con un aviso explícito en `warnings` que dice qué
 cargar y dónde: `MANUAL_ISSUE_TEM` en `tasa-fija-spec.ts`.
 
+## La curva CER
+
+Sale de **los mismos dos paneles de BYMA y con el mismo criterio de precio**
+que tasa fija. No es un detalle: el breakeven compara las dos curvas, y
+cualquier diferencia de fuente u horario entre ellas se convierte en error.
+Las dos se piden en la misma consulta.
+
+### Rendimiento real
+
+El capital de un CER se ajusta por el coeficiente que publica el BCRA, con un
+rezago que fija cada emisión y es el mismo en todas: el CER "correspondiente
+al período transcurrido entre los 10 días hábiles anteriores a la fecha de
+emisión y los 10 días hábiles anteriores a la fecha de vencimiento" (ficha
+técnica de BYMA).
+
+    capital ajustado = 100 × CER(liquidación − 10 háb) / CER(emisión − 10 háb)
+    TIR real         = la tasa que iguala el precio con los flujos ajustados
+
+El CER del vencimiento todavía no existe y no se estima: todo se mide en CER
+de hoy. En un cero cupón queda `(capital ajustado / precio)^(365/días) − 1`.
+Las tasas reales cortas pueden ser negativas y no es un error.
+
+### Qué papeles y cómo
+
+| estructura | papeles | cómo se valúa | entra al ajuste |
+|---|---|---|---|
+| cero cupón | TZX*, X* | un solo flujo | sí |
+| con cupón | TX26, TX28, TX31, DICP, DIP0, PARP, PAP0, CUAP | TIR sobre renta y amortizaciones | no |
+| dual CER/TAMAR | TXM* | TIR de la pata CER, un piso | no |
+
+La curva la definen sólo los cero cupón: miden una tasa pura a cada plazo. Un
+bono con cupón promedia varios plazos (se lo ubica por su duration) y un dual
+trae una opción adentro que le baja la TIR "CER".
+
+Las condiciones de los que pagan cupón viven en `tasa-cer-condiciones.ts`
+porque la ficha las trae en texto libre. Los del canje de 2005 capitalizaron
+parte de los intereses hasta 2013: el Discount por 1,269937 y el Cuasipar
+por 1,388593. Se verificaron contra un flujo publicado por terceros y las TIR
+coinciden al centésimo.
+
+DICPD no está: es el mismo DICP (mismo ISIN) cotizando en dólares, y su TIR
+real sería la del DICP por construcción.
+
+## Inflación breakeven
+
+Método **encadenado sobre curvas ajustadas**. No se compara bono contra bono
+—los vencimientos no coinciden y el encadenado amplifica el ruido de cada
+precio—: se evalúan las dos curvas ajustadas en las mismas fechas.
+
+    1 + BE acumulado(t) = (1 + TEA nominal)^(d/365) / (1 + TEA real)^(d/365)
+    π(t1 → t2)          = (1 + BE(t2)) / (1 + BE(t1)) − 1
+
+Nunca se extrapola: el último mes es el último que cubren **las dos** curvas,
+y hoy el techo lo pone tasa fija.
+
+### El mapeo a meses INDEC
+
+Es lo que más cuidado lleva, porque hay dos rezagos encimados.
+
+**1. El CER reparte cada IPC entre el 16 y el 15.** Por metodología del BCRA,
+el CER del día 16 de un mes al 15 del siguiente acumula el IPC del mes
+anterior. Verificado contra la serie: del 15/09 al 15/10 de 2026 el CER creció
+exactamente 1,7000%, el IPC de agosto. (No es "del 10 al 9": con esa ventana
+no coincide con ningún mes.)
+
+**2. Los títulos cobran el CER de 10 hábiles antes.** Quien compra hoy recibe
+el ajuste desde L = CER(liquidación − 10 hábiles), y un título que vence en t
+cobra el CER de t − 10 hábiles. Comparar las dos curvas mide la inflación
+esperada entre L y t − 10 hábiles.
+
+Juntando las dos cosas, el IPC del mes m está entero en la ventana del CER
+que termina el **15 de m+2**. Las fechas de evaluación se eligen para que cada
+tramo termine justo ahí:
+
+    IPC de septiembre  →  CER del 16/10 al 15/11  →  curvas leídas al plazo de L al 15/11
+
+El plazo al que se leen las curvas es el largo de la ventana del CER, de L al
+día 15. Así, que el 15 caiga en feriado o que el rezago de 10 hábiles se
+estire por un fin de semana largo no mueve nada. Si se leyeran al plazo del
+vencimiento, esos días de más se cargarían como inflación de ese mes y
+armarían un serrucho de ±0,1 punto que es del calendario, no del mercado.
+
+Cada tramo se informa como **tasa de 30 días**, igual que la TEM. Las
+ventanas tienen el largo del mes siguiente (la de enero dura 28 días) y una
+curva suave no distingue meses: sin normalizar, enero salía 0,15 puntos abajo
+de sus vecinos por culpa de febrero.
+
+### Lo que ya se publicó no es breakeven
+
+El BCRA publica el CER hasta el 15 del mes siguiente al último IPC. El tramo
+de L a esa fecha es **inflación conocida**: se muestra aparte, con el dato del
+INDEC, y no se mezcla con la expectativa de mercado. El primer forward se mide
+contra ese CER publicado y no contra la curva, que en ese plazo no agrega
+información y sólo sumaría su error de ajuste. Lo que diría la curva ahí
+viaja igual en la respuesta, como control.
+
+El INDEC publica el IPC con más decimales de los que usa el CER: agosto de
+2026 fue 1,659% y el CER acumuló 1,700%, la cifra oficial redondeada a un
+decimal. Los dos viajan en la respuesta.
+
+### Forwards raros
+
+Un forward negativo o de más del doble del último IPC publicado sale marcado.
+No es una expectativa: es un problema en el ajuste de alguna curva, y se
+reporta en vez de suavizarse.
+
 ## Mantenimiento
 
-`npm run refresh:reference` regenera el archivo versionado. Ya no hace falta
-para que aparezca una especie nueva —eso pasa solo— pero sirve para
-consolidar la referencia y revisar la clasificación completa de una.
+`npm run refresh:reference` regenera los archivos versionados. Ya no hace
+falta para que aparezca una especie nueva —eso pasa solo— pero sirve para
+consolidar la referencia y revisar la clasificación completa. Corre solo los
+lunes y jueves desde GitHub Actions, y sube el cambio si lo hay.
+
+Un CER nuevo que pague cupón aparece como "sin resolver" hasta que se carguen
+sus condiciones en `CONDICIONES_CER`.
 
 El calendario de feriados bursátiles de `conventions.ts` hay que mantenerlo al
 día: un feriado faltante corre la fecha de liquidación un día y mueve
