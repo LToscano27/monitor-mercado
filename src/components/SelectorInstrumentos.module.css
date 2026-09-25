@@ -51,6 +51,7 @@
 }
 
 .restaurar {
+  margin-left: 6px;
   padding: 3px 9px;
   background: none;
   border: 1px solid var(--borde);

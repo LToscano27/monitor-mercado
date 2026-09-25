@@ -47,13 +47,16 @@ export function SelectorInstrumentos({
             </button>
           );
         })}
-      </div>
 
-      {excluidos.size > 0 && (
-        <button type="button" onClick={onTodos} className={estilos.restaurar}>
-          Incluir todos
-        </button>
-      )}
+        {/* En la misma fila que las fichas, a continuación de la última: si
+            fuera un hermano de la fila, con muchas fichas (la CER) se iría
+            solo a la línea de abajo. */}
+        {excluidos.size > 0 && (
+          <button type="button" onClick={onTodos} className={estilos.restaurar}>
+            Incluir todos
+          </button>
+        )}
+      </div>
     </div>
   );
 }
