@@ -18,7 +18,7 @@ async function main() {
 
   console.log(`\nBREAKEVEN  ·  ${be.metodo}`);
   console.log(
-    `rueda ${be.tradeDate} (${be.session})  ·  liquidación ${be.settlementDate}  ·  dato ${be.dataTimestamp ?? '—'}`,
+    `cierre de la rueda ${be.tradeDate}  ·  liquidación ${be.settlementDate}  ·  consultado ${be.fetchedAt}`,
   );
   for (const [nombre, c] of Object.entries(be.curvas)) {
     console.log(

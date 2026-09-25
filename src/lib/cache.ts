@@ -33,7 +33,8 @@ const enPausa = new Map<string, number>();
 
 /**
  * @param ttlMs      cuánto se retiene una respuesta con contenido.
- * @param ttlSiVacio cuánto se retiene una respuesta vacía (null/undefined).
+ * @param ttlSiVacio cuánto se retiene una respuesta vacía (null/undefined),
+ *   o incompleta según `esIncompleta`.
  *   Existe porque "todavía no hay dato" y "el dato es este" no merecen la
  *   misma memoria: si BYMA aún no publicó la ficha de una especie recién
  *   licitada, cachear ese vacío un día entero la deja afuera de la curva
@@ -50,6 +51,7 @@ export async function memo<T>(
   ttlMs: number,
   fn: () => Promise<T>,
   ttlSiVacio = ttlMs,
+  esIncompleta: (valor: T) => boolean = () => false,
 ): Promise<T> {
   const ahora = Date.now();
 
@@ -72,7 +74,7 @@ export async function memo<T>(
 
   try {
     const resuelto = await valor;
-    if (resuelto === null || resuelto === undefined) {
+    if (resuelto === null || resuelto === undefined || esIncompleta(resuelto)) {
       const entrada = entradas.get(clave);
       if (entrada?.valor === valor) entrada.vence = Date.now() + ttlSiVacio;
     }
