@@ -72,3 +72,8 @@ export function fechaCorta(iso: string): string {
   return `${d} ${MESES[m - 1]} ${String(y).slice(2)}`;
 }
 
+/** '2026-11-13' -> '13/11/26'. Es el formato de las tablas. */
+export function fechaNumerica(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y.slice(2)}`;
+}
