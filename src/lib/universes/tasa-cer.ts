@@ -27,7 +27,7 @@ export const tasaCer: UniverseDefinition<CerReference, SerieDiaria> = {
   slug: 'tasa-cer',
   label: 'CER',
   description:
-    'BONCER y LECER del Tesoro Nacional: cero cupón en pesos, capital ajustado por CER, íntegros al vencimiento.',
+    'Títulos del Tesoro ajustables por CER: BONCER y LECER cero cupón, bonos con cupón, Discount, Par, Cuasipar y duales CER/TAMAR.',
   bymaPanels: TASA_CER_PANELS,
   candidateSymbol: CANDIDATE_SYMBOL,
   thresholds: DEFAULT_THRESHOLDS,
@@ -52,7 +52,16 @@ export const tasaCer: UniverseDefinition<CerReference, SerieDiaria> = {
   valuate(ref, _quote, price, settlement, serie) {
     if (!serie) return null;
     const v = valuateCer(ref, price, settlement, serie);
-    return v && { finalPayment: null, daysToMaturity: v.daysToMaturity, tem: v.tem, tea: v.tea, cer: v.cer };
+    return (
+      v && {
+        finalPayment: null,
+        daysToMaturity: v.daysToMaturity,
+        durationDays: v.durationDays,
+        tem: v.tem,
+        tea: v.tea,
+        cer: v.cer,
+      }
+    );
   },
 
   descubrir: (simbolos, signal) => descubrirPorFicha(simbolos, reglasTasaCer, signal),

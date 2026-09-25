@@ -18,6 +18,8 @@ export interface UniverseValuation {
   daysToMaturity: number;
   tem: number;
   tea: number;
+  /** Duration de Macaulay en días. Si falta, es el plazo al vencimiento. */
+  durationDays?: number;
   cer?: CerDetalle;
 }
 

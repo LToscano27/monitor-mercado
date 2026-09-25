@@ -35,6 +35,18 @@ export interface Quote {
 
 export type SourceId = 'byma';
 
+/**
+ * Cómo paga el instrumento. Decide si entra al ajuste de la curva: sólo los
+ * cero cupón, que son los que miden una tasa pura a un plazo.
+ *
+ *  - 'cero-cupon'  un único pago al vencimiento;
+ *  - 'con-cupon'   paga renta y amortiza en cuotas (TX26, DICP, PARP...);
+ *  - 'dual'        paga el máximo entre dos patas (los CER/TAMAR). Su
+ *                  rendimiento es el de la pata CER, un piso: el precio
+ *                  incluye además el valor de la opción.
+ */
+export type Estructura = 'cero-cupon' | 'con-cupon' | 'dual';
+
 /** Lo que todo instrumento del universo tiene en su referencia estática. */
 export interface InstrumentReference {
   symbol: string;
@@ -42,6 +54,8 @@ export interface InstrumentReference {
   isin: string | null;
   issueDate: IsoDate;
   maturityDate: IsoDate;
+  /** Ausente en tasa fija, donde todo es cero cupón. */
+  estructura?: Estructura;
 }
 
 /** Datos de referencia estáticos de un instrumento cero cupón capitalizable. */
@@ -53,13 +67,16 @@ export interface ZeroCouponReference extends InstrumentReference {
 }
 
 /**
- * Referencia de un título cero cupón ajustable por CER.
+ * Referencia de un título ajustable por CER.
  *
- * No lleva tasa: el capital se ajusta por el coeficiente y se paga íntegro al
- * vencimiento. Todo lo que hace falta para valuarlo son las dos fechas y el
- * CER, que no es estático y se trae en cada request.
+ * No lleva tasa: los cero cupón se valúan con las dos fechas y el CER, que no
+ * es estático y se trae en cada request. Los que pagan cupón necesitan además
+ * su cronograma, que vive en código (`tasa-cer-condiciones.ts`) porque la
+ * ficha lo trae en texto libre.
  */
-export type CerReference = InstrumentReference;
+export interface CerReference extends InstrumentReference {
+  estructura: Estructura;
+}
 
 /** Un CER puntual: la fecha a la que se tomó y el valor publicado. */
 export interface CerPunto {
@@ -73,8 +90,17 @@ export interface CerDetalle {
   emision: CerPunto;
   /** CER de diez hábiles antes de la liquidación. */
   liquidacion: CerPunto;
-  /** VN 100 × CER liquidación / CER emisión. */
+  /**
+   * Intereses capitalizados antes de empezar a pagar, como factor sobre el
+   * VN. 1 salvo en el Discount (1,2699) y el Cuasipar (1,3886).
+   */
+  coeficienteCapitalizacion: number;
+  /** Fracción del VN original que falta amortizar. */
+  residual: number;
+  /** VN 100 × residual × capitalización × CER liquidación / CER emisión. */
   capitalAjustado: number;
+  /** Pagos que quedan por cobrar. */
+  flujosRestantes: number;
 }
 
 export type QualityLevel = 'ok' | 'warn' | 'bad';
@@ -121,6 +147,13 @@ export interface InstrumentRow {
    * papel a días de vencer se queda sin tasa.
    */
   settlementBasis: 'T+1' | 'contado';
+  estructura: Estructura;
+  /**
+   * Duration de Macaulay en días. En un cero cupón es el plazo al
+   * vencimiento; en uno con cupón es menor, y es contra ella que se lo
+   * compara con la curva.
+   */
+  durationDays: number | null;
   lastPrice: number | null;
   /**
    * De dónde salió lastPrice:
