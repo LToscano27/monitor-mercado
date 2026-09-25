@@ -361,6 +361,49 @@ precio—: se evalúan las dos curvas ajustadas en las mismas fechas.
 Nunca se extrapola: el último mes es el último que cubren **las dos** curvas,
 y hoy el techo lo pone tasa fija.
 
+**Precios de cierre.** El breakeven sale de los cierres de la última rueda
+terminada: con el mercado abierto, los del día hábil anterior; al cerrar
+(17:20 reales, cuando el feed termina de publicar) pasa solo a los del día.
+Es un dato para leer una vez por día, no uno que se mueva con cada operación.
+Las curvas de la pantalla sí van en vivo.
+
+**La curva real se ajusta sólo en el tramo que se usa.** La CER llega a 2029
+y la de tasa fija a unos nueve meses. Ajustada entera, la forma logarítmica
+se empina para alcanzar los reales del 10% a dos y tres años y queda uno o
+dos puntos por encima de los papeles entre los cuatro y los doce meses,
+justo donde se calcula: bajaba el breakeven unos 0,15 puntos por mes. Para
+el breakeven se ajusta con los cero cupón hasta el plazo de tasa fija más un
+papel. La curva de la pantalla sigue con todos.
+
+### Por qué curvas y no pares
+
+Con dos títulos que vencen el mismo día, el breakeven acumulado a esa fecha
+es exacto y no necesita ninguna curva. Pero la inflación **de cada mes**
+no se puede sacar así: hay pares para pocos vencimientos (meses enteros
+quedan sin dato), y restar el acumulado de un par del siguiente carga todo
+el error de precio de un papel en un solo mes. Con precios del 25/09/2026,
+los pares de abril, mayo y junio de 2027 daban 2,27% un mes y 1,50% el
+siguiente.
+
+Es la práctica de los bancos centrales: la Reserva Federal y el Banco de
+Inglaterra ajustan una curva nominal y una real y sacan de ahí la inflación
+implícita a cada plazo ([Gürkaynak, Sack y Wright,
+2010](https://www.federalreserve.gov/pubs/feds/2008/200805/200805pap.pdf);
+[Banco de Inglaterra](https://www.bankofengland.co.uk/statistics/details/further-details-about-yields-data)).
+Usan formas más flexibles —Svensson, splines— porque tienen decenas de bonos
+por curva; con los diez de tasa fija, una forma de dos parámetros es lo que
+se sostiene. En la plaza local lo más común son los pares o promedios por
+tramo de plazo, que dan el nivel pero no el perfil mensual.
+
+### Control contra pares
+
+Los pares se usan igual, de control. Para cada LECAP o BONCAP que vence el
+mismo día que un CER, se compara la inflación mensual promedio que da el par
+con la que dan las curvas, desde el último CER publicado hasta el CER que
+cobra el par. Si se apartan más de 0,10 puntos, se marca. Un par que cobra
+menos de 20 días de CER por encima de lo publicado no cuenta: su promedio
+"mensual" mide un puñado de días y es ruido.
+
 ### El mapeo a meses INDEC
 
 Es lo que más cuidado lleva, porque hay dos rezagos encimados.

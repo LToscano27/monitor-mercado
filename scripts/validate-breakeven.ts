@@ -67,6 +67,12 @@ async function main() {
       ].join(' '),
     );
   }
+  console.log('\nCONTROL: PARES DEL MISMO VENCIMIENTO (inflación mensual promedio desde el último CER publicado)');
+  for (const c of be.controles) {
+    console.log(
+      `  ${`${c.tasaFija}/${c.cer}`.padEnd(13)} vence ${c.vencimiento}  CER hasta ${c.cerHasta}   par ${pct(c.mensualPar, 3)}   curva ${pct(c.mensualCurva, 3)}${c.seAparta ? '   ⚠ se aparta' : ''}`,
+    );
+  }
   if (be.warnings.length) {
     console.log('\nWARNINGS');
     for (const w of be.warnings) console.log(`  · ${w}`);
