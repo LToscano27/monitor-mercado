@@ -1,0 +1,196 @@
+/*
+ * Mismo sistema que la curva: todo en tinta. Lo publicado y lo implícito se
+ * distinguen por textura —rayado contra lleno—, no por color: el color de
+ * esta pantalla es sólo para la dirección del precio.
+ */
+
+.panel {
+  padding: 20px 22px 18px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 18px;
+  margin-bottom: 14px;
+}
+
+.titulo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.sello {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  color: var(--tinta-3);
+  font-size: 11px;
+}
+
+.falla {
+  margin: 0;
+  padding: 36px 0;
+  color: var(--tinta-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── leyenda ───────────────────────────────────────────────── */
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 6px;
+  color: var(--tinta-2);
+  font-size: 11.5px;
+}
+
+.clave {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.muestra {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 1px;
+}
+
+.muestraImplicita {
+  background: var(--tinta);
+}
+
+.muestraPublicada {
+  border: 1px solid var(--tinta-2);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--tinta-2) 0 1px,
+    transparent 1px 3.5px
+  );
+}
+
+/* ── gráfico ───────────────────────────────────────────────── */
+
+.lienzo {
+  width: 100%;
+}
+
+.lienzo svg {
+  display: block;
+  overflow: visible;
+}
+
+.grilla {
+  stroke: var(--regla);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.eje {
+  stroke: var(--eje);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.marcaEje {
+  fill: var(--tinta);
+  font-family: var(--fuente-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.barraImplicita {
+  fill: var(--tinta);
+}
+
+.barraPublicada {
+  stroke: var(--tinta-2);
+  stroke-width: 1;
+}
+
+.rayado {
+  stroke: var(--tinta-2);
+  stroke-width: 1.2;
+}
+
+/* Un forward que no es expectativa sino problema de ajuste: hueco y
+   punteado, igual que un punto con marcas de calidad en la curva. */
+.barraMarcada {
+  fill: var(--panel);
+  stroke: var(--tinta);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+/* Frontera entre lo publicado y lo que descuenta el mercado. */
+.corte {
+  stroke: var(--eje);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.valor {
+  fill: var(--tinta);
+  font-family: var(--fuente-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.mes {
+  fill: var(--tinta);
+  font-family: var(--fuente-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.acumulada {
+  fill: var(--tinta-2);
+  font-family: var(--fuente-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+}
+
+.rotulo {
+  fill: var(--tinta-3);
+  font-family: var(--fuente-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-anchor: end;
+}
+
+/* Barras angostas (teléfono): mes sin año y cifras más chicas, para que
+   ningún rótulo se pise con el de al lado. */
+.angosto .valor,
+.angosto .acumulada {
+  font-size: 8.5px;
+}
+
+.angosto .mes {
+  font-size: 9.5px;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 16px 14px 14px;
+  }
+}

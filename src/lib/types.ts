@@ -196,9 +196,23 @@ export interface InstrumentRow {
   } | null;
 }
 
+/** Cómo se muestra un universo: lo decide su definición, no el frontend. */
+export interface VistaUniverso {
+  tituloCurva: string;
+  /**
+   * Qué va en el eje horizontal de la curva. Tasa fija es todo cero cupón y
+   * usa el plazo al vencimiento. La CER mezcla bonos que pagan cupón, y a
+   * esos el plazo que los compara con el resto es la duration.
+   */
+  ejeX: 'vencimiento' | 'duration';
+  /** Si la ventana lleva el panel de inflación breakeven. */
+  breakeven: boolean;
+}
+
 export interface UniverseResponse {
   universe: string;
   label: string;
+  vista: VistaUniverso;
   /** Rueda a la que corresponden los precios. */
   tradeDate: IsoDate;
   /**

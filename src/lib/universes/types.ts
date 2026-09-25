@@ -1,7 +1,7 @@
 import type { ConventionsMeta } from '../conventions';
 import type { BymaPanel } from '../sources/byma';
 import type { QualityThresholds } from '../quality';
-import type { CerDetalle, InstrumentReference, Quote } from '../types';
+import type { CerDetalle, InstrumentReference, Quote, VistaUniverso } from '../types';
 
 /**
  * Un universo es un conjunto de instrumentos con un mismo motor de
@@ -33,6 +33,7 @@ export interface UniverseDefinition<R extends InstrumentReference = InstrumentRe
   label: string;
   description: string;
   bymaPanels: readonly BymaPanel[];
+  vista: VistaUniverso;
   /**
    * Forma del ticker base de las especies del universo. Decide qué tickers
    * desconocidos del panel vale la pena mirar para ver si son nuevos.

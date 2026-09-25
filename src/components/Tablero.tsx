@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UniverseResponse } from '@/lib/types';
-import { PanelCurva, type Metrica } from './PanelCurva';
+import { NOMBRE_METRICA, PanelCurva, type Metrica } from './PanelCurva';
+import { PanelBreakeven } from './PanelBreakeven';
 import { SelectorInstrumentos } from './SelectorInstrumentos';
 import { TablaPrecios } from './TablaPrecios';
 import { SelectorTema } from './SelectorTema';
@@ -201,7 +202,7 @@ export function Tablero({ slug, universos }: Props) {
                   aria-pressed={metrica === m}
                   className={estilos.segmento}
                 >
-                  {m.toUpperCase()}
+                  {NOMBRE_METRICA[m]}
                 </button>
               ))}
             </div>
@@ -213,7 +214,7 @@ export function Tablero({ slug, universos }: Props) {
             <section className={estilos.panel} aria-labelledby="t-curva">
               <div className={estilos.panelCabecera}>
                 <h2 id="t-curva" className={estilos.panelTitulo}>
-                  Curva de tasa fija
+                  {datos.vista.tituloCurva}
                 </h2>
               </div>
               <SelectorInstrumentos
@@ -232,13 +233,16 @@ export function Tablero({ slug, universos }: Props) {
               <PanelCurva
                 instrumentos={datos.instruments}
                 metrica={metrica}
+                ejeX={datos.vista.ejeX}
                 excluidos={excluidos}
                 onToggle={alternarInstrumento}
               />
             </section>
 
+            {datos.vista.breakeven && <PanelBreakeven />}
+
             <section className={estilos.panel} aria-label="Precios">
-              <TablaPrecios instrumentos={datos.instruments} />
+              <TablaPrecios instrumentos={datos.instruments} ejeX={datos.vista.ejeX} />
             </section>
           </div>
         </>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import type { InstrumentRow } from '@/lib/types';
+import type { InstrumentRow, VistaUniverso } from '@/lib/types';
 import { escalaLineal, marcasLimpias } from '@/lib/escala';
 import { regresionLogaritmica } from '@/lib/ajuste';
 import {
@@ -16,9 +16,22 @@ import estilos from './PanelCurva.module.css';
 
 export type Metrica = 'tea' | 'tem';
 
+/**
+ * Cómo se llama cada medida en pantalla. Internamente la anual es `tea`; en
+ * pantalla es TIR, que es lo que es: la tasa efectiva anual que iguala el
+ * precio con los flujos. En un cero cupón coinciden por definición.
+ */
+export const NOMBRE_METRICA: Record<Metrica, string> = { tea: 'TIR', tem: 'TEM' };
+
+/** El plazo con el que se ubica un instrumento en el eje horizontal. */
+export function plazoEnEje(i: InstrumentRow, eje: VistaUniverso['ejeX']): number {
+  return eje === 'duration' ? (i.durationDays ?? i.daysToMaturity) : i.daysToMaturity;
+}
+
 interface Props {
   instrumentos: InstrumentRow[];
   metrica: Metrica;
+  ejeX: VistaUniverso['ejeX'];
   /** Tickers sacados a mano del ajuste. */
   excluidos: ReadonlySet<string>;
   onToggle: (ticker: string) => void;
@@ -33,7 +46,7 @@ const PAD_DER = 24;
 const RADIO_PUNTO = 4.5;
 const ALTO_TOTAL = PAD_SUP + ALTO_CURVA + ALTO_EJE;
 
-export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props) {
+export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }: Props) {
   const [ancho, setAncho] = useState(960);
   const [activo, setActivo] = useState<string | null>(null);
 
@@ -61,7 +74,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
     const x1 = ancho - PAD_DER;
 
     const conDato = visibles.filter((i) => i[metrica] !== null);
-    const maxDias = Math.max(30, ...visibles.map((i) => i.daysToMaturity));
+    const maxDias = Math.max(30, ...visibles.map((i) => plazoEnEje(i, ejeX)));
     const x = escalaLineal([0, maxDias * 1.04], [x0, x1]);
 
     const valores = conDato.map((i) => i[metrica] as number);
@@ -78,22 +91,23 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
       marcasY: marcasLimpias(minV - colchon, maxV + colchon, 5),
       marcasX: marcasLimpias(0, maxDias * 1.04, 6).filter((d) => d > 0),
     };
-  }, [ancho, visibles, metrica]);
+  }, [ancho, visibles, metrica, ejeX]);
 
   const { x, y } = geometria;
 
   /**
    * Entran al ajuste los instrumentos dibujados que no tengan marcas de
-   * calidad. La curva se recalcula con lo que quede.
+   * calidad. La curva se recalcula con lo que quede, contra el mismo plazo
+   * que el eje: en la CER, la duration.
    */
   const ajuste = useMemo(
     () =>
       regresionLogaritmica(
         visibles
           .filter((i) => i.quality.level === 'ok' && i[metrica] !== null)
-          .map((i) => ({ dias: i.daysToMaturity, valor: i[metrica] as number })),
+          .map((i) => ({ dias: plazoEnEje(i, ejeX), valor: i[metrica] as number })),
       ),
-    [visibles, metrica],
+    [visibles, metrica, ejeX],
   );
 
   const trazo = useMemo(() => {
@@ -116,7 +130,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
       let cerca: InstrumentRow | null = null;
       let mejor = Infinity;
       for (const i of visibles) {
-        const d = Math.abs(x(i.daysToMaturity) - px);
+        const d = Math.abs(x(plazoEnEje(i, ejeX)) - px);
         if (d < mejor) {
           mejor = d;
           cerca = i;
@@ -124,10 +138,11 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
       }
       setActivo(cerca && mejor < 60 ? cerca.ticker : null);
     },
-    [visibles, x, ancho],
+    [visibles, x, ancho, ejeX],
   );
 
-  const etiquetaMetrica = metrica === 'tea' ? 'TEA' : 'TEM';
+  const etiquetaMetrica = NOMBRE_METRICA[metrica];
+  const etiquetaEje = ejeX === 'duration' ? 'duration' : 'días al vencimiento';
 
   const conRendimiento = visibles.filter((i) => i[metrica] !== null).length;
 
@@ -151,7 +166,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
         height={ALTO_TOTAL}
         className={estilos.lienzo}
         role="img"
-        aria-label={`Curva de ${etiquetaMetrica} contra días al vencimiento. Los valores exactos están en la tabla de precios.`}
+        aria-label={`Curva de ${etiquetaMetrica} contra ${etiquetaEje}. Los valores exactos están en la tabla de precios.`}
         onPointerMove={alPuntero}
         onPointerLeave={() => setActivo(null)}
       >
@@ -182,7 +197,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
         {visibles.map((i, idx) => {
           const v = i[metrica];
           if (v === null) return null;
-          const cx = x(i.daysToMaturity);
+          const cx = x(plazoEnEje(i, ejeX));
           const cy = y(v);
           const marcado = i.quality.level !== 'ok';
           const esActivo = i.ticker === activo;
@@ -228,7 +243,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
           );
         })}
 
-        {/* ── eje de días al vencimiento ────────────────────────── */}
+        {/* ── eje de plazo ──────────────────────────────────────── */}
         <line
           x1={geometria.x0}
           x2={geometria.x1}
@@ -251,7 +266,7 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
           </g>
         ))}
         <text x={geometria.x1} y={geometria.curvaInf + 37} className={estilos.tituloEjeX}>
-          DÍAS AL VENCIMIENTO
+          {ejeX === 'duration' ? 'DURATION (DÍAS)' : 'DÍAS AL VENCIMIENTO'}
         </text>
       </svg>
 
@@ -259,7 +274,8 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
         <Globo
           instrumento={instrumentoActivo}
           metrica={metrica}
-          izquierda={x(instrumentoActivo.daysToMaturity)}
+          ejeX={ejeX}
+          izquierda={x(plazoEnEje(instrumentoActivo, ejeX))}
           ancho={ancho}
         />
       )}
@@ -270,11 +286,13 @@ export function PanelCurva({ instrumentos, metrica, excluidos, onToggle }: Props
 function Globo({
   instrumento: i,
   metrica,
+  ejeX,
   izquierda,
   ancho,
 }: {
   instrumento: InstrumentRow;
   metrica: Metrica;
+  ejeX: VistaUniverso['ejeX'];
   izquierda: number;
   ancho: number;
 }) {
@@ -296,15 +314,18 @@ function Globo({
       </div>
 
       <dl className={estilos.globoLista}>
-        <Fila etiqueta={metrica === 'tea' ? 'TEA' : 'TEM'} valor={pct(i[metrica])} fuerte />
+        <Fila etiqueta={NOMBRE_METRICA[metrica]} valor={pct(i[metrica])} fuerte />
         <Fila
-          etiqueta={metrica === 'tea' ? 'TEM' : 'TEA'}
+          etiqueta={NOMBRE_METRICA[metrica === 'tea' ? 'tem' : 'tea']}
           valor={pct(metrica === 'tea' ? i.tem : i.tea)}
         />
         <Fila
           etiqueta="Días al vto."
           valor={`${entero(i.daysToMaturity)}${i.settlementBasis === 'contado' ? '  (contado)' : ''}`}
         />
+        {ejeX === 'duration' && (
+          <Fila etiqueta="Duration" valor={`${entero(Math.round(i.durationDays ?? i.daysToMaturity))} días`} />
+        )}
         <Fila etiqueta="Precio" valor={precio(i.lastPrice)} />
         <Fila
           etiqueta="Variación"

@@ -330,15 +330,24 @@ Las tasas reales cortas pueden ser negativas y no es un error.
 
 ### Qué papeles y cómo
 
-| estructura | papeles | cómo se valúa | entra al ajuste |
+| estructura | papeles | cómo se valúa | entra al breakeven |
 |---|---|---|---|
 | cero cupón | TZX*, X* | un solo flujo | sí |
 | con cupón | TX26, TX28, TX31, DICP, DIP0, PARP, PAP0, CUAP | TIR sobre renta y amortizaciones | no |
 | dual CER/TAMAR | TXM* | TIR de la pata CER, un piso | no |
 
-La curva la definen sólo los cero cupón: miden una tasa pura a cada plazo. Un
-bono con cupón promedia varios plazos (se lo ubica por su duration) y un dual
-trae una opción adentro que le baja la TIR "CER".
+**En pantalla** la curva CER se dibuja contra la **duration**, no contra el
+plazo al vencimiento: un bono que paga cupón promedia varios plazos y ése es
+el que lo compara con el resto (en un cero cupón coinciden). Todos los papeles
+entran al ajuste de la pantalla y se sacan o ponen con su ficha, como en tasa
+fija. Tasa fija, que es toda cero cupón, sigue contra los días al vencimiento.
+
+**Para el breakeven** cuentan sólo los cero cupón: miden una tasa pura a cada
+plazo. Un bono con cupón promedia plazos y un dual trae una opción adentro que
+le baja la TIR "CER".
+
+En las dos curvas la tasa anual se muestra como **TIR**: es la tasa efectiva
+anual que iguala el precio con los flujos, que en un cero cupón es la TEA.
 
 Las condiciones de los que pagan cupón viven en `tasa-cer-condiciones.ts`
 porque la ficha las trae en texto libre. Los del canje de 2005 capitalizaron
