@@ -61,6 +61,12 @@ export function monto(value: number | null): string {
   return conComa(value);
 }
 
+/** Duration en años, con dos decimales: 1.125 días -> '3,08'. */
+export function anios(dias: number | null): string {
+  if (dias === null || !Number.isFinite(dias)) return guion;
+  return conComa(dias / 365);
+}
+
 /** '2026-11-13' -> '13/11/26'. El formato de toda fecha en pantalla. */
 export function fechaCorta(iso: string): string {
   const [y, m, d] = iso.split('-');

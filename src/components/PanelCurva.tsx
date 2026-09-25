@@ -5,6 +5,7 @@ import type { InstrumentRow, VistaUniverso } from '@/lib/types';
 import { escalaLineal, marcasLimpias } from '@/lib/escala';
 import { regresionLogaritmica } from '@/lib/ajuste';
 import {
+  anios,
   entero,
   fechaCorta,
   numeroFirmado,
@@ -23,10 +24,18 @@ export type Metrica = 'tea' | 'tem';
  */
 export const NOMBRE_METRICA: Record<Metrica, string> = { tea: 'TIR', tem: 'TEM' };
 
-/** El plazo con el que se ubica un instrumento en el eje horizontal. */
+/**
+ * El plazo con el que se ubica un instrumento en el eje horizontal, en las
+ * unidades del eje: días al vencimiento en tasa fija, años de duration en la
+ * CER. El ajuste se hace en las mismas unidades; pasar de días a años sólo
+ * corre la constante del logaritmo, la curva dibujada es la misma.
+ */
 export function plazoEnEje(i: InstrumentRow, eje: VistaUniverso['ejeX']): number {
-  return eje === 'duration' ? (i.durationDays ?? i.daysToMaturity) : i.daysToMaturity;
+  return eje === 'duration' ? (i.durationDays ?? i.daysToMaturity) / 365 : i.daysToMaturity;
 }
+
+/** Rango mínimo del eje, para que dos papeles cortos no llenen el gráfico. */
+const MINIMO_EJE: Record<VistaUniverso['ejeX'], number> = { vencimiento: 30, duration: 0.25 };
 
 interface Props {
   instrumentos: InstrumentRow[];
@@ -74,7 +83,7 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
     const x1 = ancho - PAD_DER;
 
     const conDato = visibles.filter((i) => i[metrica] !== null);
-    const maxDias = Math.max(30, ...visibles.map((i) => plazoEnEje(i, ejeX)));
+    const maxDias = Math.max(MINIMO_EJE[ejeX], ...visibles.map((i) => plazoEnEje(i, ejeX)));
     const x = escalaLineal([0, maxDias * 1.04], [x0, x1]);
 
     const valores = conDato.map((i) => i[metrica] as number);
@@ -261,12 +270,12 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
               className={estilos.eje}
             />
             <text x={x(d)} y={geometria.curvaInf + 19} className={estilos.marcaX}>
-              {entero(d)}
+              {ejeX === 'duration' ? d.toLocaleString('es-AR', { maximumFractionDigits: 2 }) : entero(d)}
             </text>
           </g>
         ))}
         <text x={geometria.x1} y={geometria.curvaInf + 37} className={estilos.tituloEjeX}>
-          {ejeX === 'duration' ? 'DURATION (DÍAS)' : 'DÍAS AL VENCIMIENTO'}
+          {ejeX === 'duration' ? 'DURATION (AÑOS)' : 'DÍAS AL VENCIMIENTO'}
         </text>
       </svg>
 
@@ -324,7 +333,7 @@ function Globo({
           valor={`${entero(i.daysToMaturity)}${i.settlementBasis === 'contado' ? '  (contado)' : ''}`}
         />
         {ejeX === 'duration' && (
-          <Fila etiqueta="Duration" valor={`${entero(Math.round(i.durationDays ?? i.daysToMaturity))} días`} />
+          <Fila etiqueta="Duration" valor={`${anios(i.durationDays ?? i.daysToMaturity)} años`} />
         )}
         <Fila etiqueta="Precio" valor={precio(i.lastPrice)} />
         <Fila
