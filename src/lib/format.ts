@@ -3,11 +3,6 @@
  * cómo se leen. Ningún cálculo vive en este archivo.
  */
 
-const MESES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-];
-
 export const guion = '—';
 
 /**
@@ -66,14 +61,8 @@ export function monto(value: number | null): string {
   return conComa(value);
 }
 
-/** '2026-11-13' -> '13 nov 26' */
+/** '2026-11-13' -> '13/11/26'. El formato de toda fecha en pantalla. */
 export function fechaCorta(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${MESES[m - 1]} ${String(y).slice(2)}`;
-}
-
-/** '2026-11-13' -> '13/11/26'. Es el formato de las tablas. */
-export function fechaNumerica(iso: string): string {
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y.slice(2)}`;
 }
