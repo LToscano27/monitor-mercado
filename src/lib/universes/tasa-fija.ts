@@ -22,6 +22,7 @@ export const tasaFija: UniverseDefinition<ZeroCouponReference> = {
   description:
     'LECAPs y BONCAPs del Tesoro Nacional: cero cupón en pesos, capitalizables, íntegros al vencimiento.',
   bymaPanels: TASA_FIJA_PANELS,
+  vista: { tituloCurva: 'Curva de tasa fija', ejeX: 'vencimiento', breakeven: false },
   candidateSymbol: CANDIDATE_SYMBOL,
   thresholds: DEFAULT_THRESHOLDS,
   conventions: CONVENTIONS_META,

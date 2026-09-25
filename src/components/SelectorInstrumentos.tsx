@@ -2,6 +2,7 @@
 
 import type { InstrumentRow } from '@/lib/types';
 import { pct } from '@/lib/format';
+import { NOMBRE_METRICA } from './PanelCurva';
 import estilos from './SelectorInstrumentos.module.css';
 
 interface Props {
@@ -40,7 +41,7 @@ export function SelectorInstrumentos({
               onClick={() => onToggle(i.ticker)}
               className={`mono ${estilos.ficha}`}
               data-fuera={fuera || undefined}
-              title={`${i.ticker} · ${metrica.toUpperCase()} ${pct(i[metrica])} · ${i.daysToMaturity} días`}
+              title={`${i.ticker} · ${NOMBRE_METRICA[metrica]} ${pct(i[metrica])} · ${i.daysToMaturity} días`}
             >
               {i.ticker}
             </button>

@@ -29,6 +29,7 @@ export const tasaCer: UniverseDefinition<CerReference, SerieDiaria> = {
   description:
     'Títulos del Tesoro ajustables por CER: BONCER y LECER cero cupón, bonos con cupón, Discount, Par, Cuasipar y duales CER/TAMAR.',
   bymaPanels: TASA_CER_PANELS,
+  vista: { tituloCurva: 'Curva CER', ejeX: 'duration', breakeven: true },
   candidateSymbol: CANDIDATE_SYMBOL,
   thresholds: DEFAULT_THRESHOLDS,
   conventions: CER_CONVENTIONS_META,

@@ -385,6 +385,7 @@ export async function buildUniverse(
   return {
     universe: universe.slug,
     label: universe.label,
+    vista: universe.vista,
     tradeDate: tradeDateIso,
     session,
     settlementDate: toIsoDate(settlement),
