@@ -50,6 +50,16 @@ const MINIMO_UTIL_MS = 1_500;
 /** Offset fijo de la plaza local. Argentina no aplica horario de verano. */
 const MARKET_UTC_OFFSET = '-03:00';
 
+/**
+ * Qué precios se quieren:
+ *  - 'vivo'    los de la rueda en curso si la hay, si no el último cierre.
+ *    Es lo que muestran las curvas.
+ *  - 'cierre'  siempre el cierre de la última rueda terminada: con el
+ *    mercado abierto, el de la rueda anterior. Es lo que usa el breakeven,
+ *    que así cambia una vez por día y no con cada operación.
+ */
+export type Precios = 'vivo' | 'cierre';
+
 interface QuoteFetchResult {
   quotes: Map<string, Quote>;
   session: UniverseResponse['session'];
@@ -111,18 +121,28 @@ function panelTieneDatos(
 async function fetchQuotes(
   universe: AnyUniverse,
   ahora: Date,
+  precios: Precios,
 ): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
   const presupuesto = crearPresupuesto();
+  const hoyIso = toIsoDate(marketToday(momentoVisible(ahora)));
+
+  // Con la rueda en curso, quien pide cierres quiere el de la rueda anterior:
+  // el panel es precio en vivo y no sirve, y de la serie histórica hay que
+  // descartar la barra de hoy, que todavía se está formando.
+  const ruedaEnCurso = isWithinTradingHours(momentoVisible(ahora));
+  const soloAnteriores = precios === 'cierre' && ruedaEnCurso;
 
   let panel: Map<string, Quote> | null = null;
-  try {
-    panel = await presupuesto.correr(
-      (signal) => byma.fetchQuotes(universe.bymaPanels, signal),
-      PANEL_TIMEOUT_MS,
-    );
-  } catch (err) {
-    warnings.push(`El panel de BYMA no respondió (${(err as Error).message}).`);
+  if (!soloAnteriores) {
+    try {
+      panel = await presupuesto.correr(
+        (signal) => byma.fetchQuotes(universe.bymaPanels, signal),
+        PANEL_TIMEOUT_MS,
+      );
+    } catch (err) {
+      warnings.push(`El panel de BYMA no respondió (${(err as Error).message}).`);
+    }
   }
 
   if (panel && panelTieneDatos(panel, universe)) {
@@ -131,17 +151,17 @@ async function fetchQuotes(
     // rueda—, y sólo cambia cómo se los llama.
     return {
       quotes: panel,
-      session: isWithinTradingHours(momentoVisible(ahora)) ? 'intradiaria' : 'cierre',
+      session: ruedaEnCurso ? 'intradiaria' : 'cierre',
       warnings,
     };
   }
 
-  // Mercado cerrado: los precios son los de cierre de la última rueda.
+  // Mercado cerrado, o se pidieron cierres: los precios son los de cierre de
+  // la última rueda terminada.
   //
   // Se piden sólo las especies vivas. La referencia acumula las que ya
   // vencieron, y pedir la serie histórica de un papel muerto es un pedido de
   // más a una fuente que castiga el exceso, para un dato que se descarta.
-  const hoyIso = toIsoDate(marketToday(momentoVisible(ahora)));
   const vivas = [...universe.reference.values()]
     .filter((ref) => ref.maturityDate > hoyIso)
     .map((ref) => ref.symbol);
@@ -149,7 +169,7 @@ async function fetchQuotes(
   let cierres = new Map<string, Quote>();
   try {
     cierres = await presupuesto.correr(
-      (signal) => byma.fetchClosingQuotes(vivas, signal),
+      (signal) => byma.fetchClosingQuotes(vivas, signal, soloAnteriores ? hoyIso : undefined),
       Math.min(CLOSING_TIMEOUT_MAX_MS, presupuesto.restante()),
     );
   } catch (err) {
@@ -169,8 +189,9 @@ async function fetchQuotes(
 export async function buildUniverse(
   universe: AnyUniverse,
   now: Date = new Date(),
+  precios: Precios = 'vivo',
 ): Promise<UniverseResponse> {
-  const { quotes, session, warnings } = await fetchQuotes(universe, now);
+  const { quotes, session, warnings } = await fetchQuotes(universe, now, precios);
 
   // Con el mercado cerrado la rueda de referencia no es hoy: es la última
   // rueda con datos. La liquidación T+1 y el conteo de días cuelgan de ahí,

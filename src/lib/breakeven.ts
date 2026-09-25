@@ -13,7 +13,7 @@ import {
 } from './conventions';
 import { fetchCer } from './sources/bcra';
 import { fetchIpcMensual } from './sources/indec';
-import type { CerPunto, UniverseResponse } from './types';
+import type { CerPunto } from './types';
 import { tasaCer } from './universes/tasa-cer';
 import { tasaFija } from './universes/tasa-fija';
 
@@ -135,12 +135,13 @@ export interface MesBreakeven {
 
 export interface BreakevenResponse {
   metodo: 'encadenado sobre curvas ajustadas';
+  /**
+   * Rueda de cuyo cierre salen los precios: la última terminada. Con el
+   * mercado abierto, la anterior a hoy.
+   */
   tradeDate: IsoDate;
-  session: UniverseResponse['session'];
   settlementDate: IsoDate;
   fetchedAt: string;
-  /** Hora del último trade más reciente entre los papeles de las dos curvas. */
-  dataTimestamp: string | null;
   curvas: { nominal: AjusteResumen; real: AjusteResumen };
   cer: {
     /** L: CER de liquidación − 10 hábiles, punto de partida de todo. */
@@ -165,15 +166,31 @@ export interface BreakevenResponse {
 const FACTOR_ALTO = 2;
 
 export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenResponse> {
-  // Las dos a la vez: los paneles de BYMA se piden una sola vez y las dos
-  // curvas salen de la misma foto.
-  const [fija, cer] = await Promise.all([buildUniverse(tasaFija, now), buildUniverse(tasaCer, now)]);
+  // Con precios de cierre de la última rueda terminada: el breakeven es un
+  // dato para leer una vez por día, y con precios en vivo se movería con cada
+  // operación. Con la rueda abierta es el cierre de ayer; al cerrar el
+  // mercado pasa solo al de hoy.
+  //
+  // Una curva después de la otra y no a la vez: fuera del panel, los cierres
+  // salen de la serie histórica, un pedido por papel, y las dos juntas
+  // duplicarían los pedidos simultáneos a BYMA. Con cierres no hay foto que
+  // cuidar: son los mismos precios los pida quien los pida.
+  const fija = await buildUniverse(tasaFija, now, 'cierre');
+  const cer = await buildUniverse(tasaCer, now, 'cierre');
   if (fija.tradeDate !== cer.tradeDate || fija.settlementDate !== cer.settlementDate) {
     throw new Error(
       `Las curvas no son de la misma rueda: tasa fija ${fija.tradeDate}, CER ${cer.tradeDate}.`,
     );
   }
   const warnings = [...fija.warnings, ...cer.warnings];
+  // Un cero cupón sin cierre sale de su curva, y eso cambia el breakeven.
+  // Se avisa cuáles, para que un número raro tenga explicación.
+  const sinCierre = [...fija.instruments, ...cer.instruments]
+    .filter((i) => i.estructura === 'cero-cupon' && i.lastPrice === null)
+    .map((i) => i.ticker);
+  if (sinCierre.length > 0) {
+    warnings.push(`Sin cierre en BYMA, fuera del ajuste: ${sinCierre.join(', ')}.`);
+  }
 
   const nominal = regresionLogaritmica(puntosDelAjuste(fija.instruments, 'tea'));
   const real = regresionLogaritmica(puntosDelAjuste(cer.instruments, 'tea'));
@@ -267,18 +284,11 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   }
   if (meses.length === 0) warnings.push('Las curvas no se superponen más allá de la inflación conocida.');
 
-  const horas = [...fija.instruments, ...cer.instruments]
-    .map((i) => i.dataTimestamp)
-    .filter((h): h is string => h !== null)
-    .sort();
-
   return {
     metodo: 'encadenado sobre curvas ajustadas',
     tradeDate: cer.tradeDate,
-    session: cer.session,
     settlementDate: cer.settlementDate,
     fetchedAt: now.toISOString(),
-    dataTimestamp: horas[horas.length - 1] ?? null,
     curvas: { nominal: resumen(nominal), real: resumen(real) },
     cer: { liquidacion: L, ultimoPublicado: U },
     conocida: {

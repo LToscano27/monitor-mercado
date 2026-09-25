@@ -11,6 +11,12 @@ const REQUEST_TIMEOUT_MS = 7_000;
 const TTL_PANEL_MS = 15_000;
 /** Un cierre ya no cambia. Se retiene largo y se revisa cada tanto por si hay rueda nueva. */
 const TTL_CIERRE_MS = 15 * 60_000;
+/**
+ * Si faltó la serie de algún papel, el lote se retiene sólo un minuto: un
+ * hueco transitorio no puede dejar al papel afuera de la curva un cuarto de
+ * hora.
+ */
+const TTL_CIERRE_INCOMPLETO_MS = 60_000;
 
 const BASE =
   'https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free';
@@ -262,19 +268,29 @@ export async function fetchHistory(
  * Devuelve el cierre de la última rueda disponible y el de la anterior, que es
  * lo que necesita la variación del día. No hay book ni hora de trade: fuera de
  * rueda esos datos no existen, y no se inventan.
+ *
+ * Con `antesDe` se ignoran las ruedas de esa fecha en adelante. Hace falta
+ * con el mercado abierto: la serie ya trae la barra de la rueda en curso, que
+ * no es un cierre.
  */
 export function fetchClosingQuotes(
   symbols: readonly string[],
   signal?: AbortSignal,
+  antesDe?: string,
 ): Promise<Map<string, Quote>> {
-  return memo(`cierres:${symbols.join(',')}`, TTL_CIERRE_MS, () =>
-    traerCierres(symbols, signal),
+  return memo(
+    `cierres:${antesDe ?? ''}:${symbols.join(',')}`,
+    TTL_CIERRE_MS,
+    () => traerCierres(symbols, signal, antesDe),
+    TTL_CIERRE_INCOMPLETO_MS,
+    (cierres) => cierres.size < symbols.length,
   );
 }
 
 async function traerCierres(
   symbols: readonly string[],
   signal?: AbortSignal,
+  antesDe?: string,
 ): Promise<Map<string, Quote>> {
   const quotes = new Map<string, Quote>();
   const LOTE = 4; // BYMA no documenta rate limit; no lo apuramos
@@ -286,7 +302,7 @@ async function traerCierres(
     );
 
     lote.forEach((symbol, k) => {
-      const barras = series[k];
+      const barras = antesDe ? series[k].filter((b) => b.date < antesDe) : series[k];
       if (!barras.length) return;
       const ultima = barras[barras.length - 1];
       const previa = barras[barras.length - 2];
