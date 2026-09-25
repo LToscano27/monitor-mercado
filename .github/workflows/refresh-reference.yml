@@ -1,4 +1,4 @@
-# Mantiene al día src/lib/reference/tasa-fija.json.
+# Mantiene al día la referencia de cada universo (src/lib/reference/*.json).
 #
 # La referencia no hace falta para que la curva esté bien: el pipeline ignora
 # lo vencido y descubre en caliente lo que no conoce. Lo que se gana teniéndola
@@ -51,33 +51,37 @@ jobs:
       - name: Verificar lo regenerado
         run: |
           node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const ruta = "src/lib/reference/tasa-fija.json";
-            const { instruments } = JSON.parse(readFileSync(ruta, "utf8"));
-
-            if (instruments.length < 5) {
-              throw new Error(`Solo ${instruments.length} instrumentos: el panel vino corto.`);
-            }
-            for (const i of instruments) {
-              // Una TEM de emisión fuera de este rango no es un dato de mercado,
-              // es un parseo mal leído. El pago al vencimiento sale de acá.
-              if (!(i.issueTem > 0.001 && i.issueTem < 0.15)) {
-                throw new Error(`${i.symbol}: TEM de emisión ${i.issueTem} fuera de rango.`);
+            import { readFileSync, readdirSync } from "node:fs";
+            const dir = "src/lib/reference";
+            for (const archivo of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+              const { instruments } = JSON.parse(readFileSync(`${dir}/${archivo}`, "utf8"));
+              if (instruments.length < 5) {
+                throw new Error(`${archivo}: solo ${instruments.length} instrumentos, el panel vino corto.`);
               }
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(i.maturityDate)) {
-                throw new Error(`${i.symbol}: vencimiento ilegible (${i.maturityDate}).`);
+              for (const i of instruments) {
+                // Sólo tasa fija tiene TEM de emisión. Fuera de este rango no
+                // es un dato de mercado, es un parseo mal leído, y el pago al
+                // vencimiento sale de acá.
+                if ("issueTem" in i && !(i.issueTem > 0.001 && i.issueTem < 0.15)) {
+                  throw new Error(`${archivo} ${i.symbol}: TEM de emisión ${i.issueTem} fuera de rango.`);
+                }
+                for (const campo of ["issueDate", "maturityDate"]) {
+                  if (!/^\d{4}-\d{2}-\d{2}$/.test(i[campo])) {
+                    throw new Error(`${archivo} ${i.symbol}: ${campo} ilegible (${i[campo]}).`);
+                  }
+                }
               }
+              console.log(`${archivo}: ${instruments.length} instrumentos verificados.`);
             }
-            console.log(`${instruments.length} instrumentos verificados.`);
           '
 
       - name: Subir si cambió
         run: |
-          # El archivo trae un `generatedAt` que cambia en cada corrida aunque
+          # Cada archivo trae un `generatedAt` que cambia en cada corrida aunque
           # el contenido sea idéntico. Si se mirara el diff a secas, cada
           # pasada dejaría un commit y un redeploy sin un solo dato nuevo, así
           # que esa línea no cuenta como cambio.
-          diff=$(git diff -U0 -- src/lib/reference/tasa-fija.json)
+          diff=$(git diff -U0 -- src/lib/reference)
           cambios=$(printf '%s' "$diff" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -v generatedAt || true)
           if [ -z "$cambios" ]; then
             echo "Sin cambios de contenido."
@@ -85,6 +89,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/lib/reference/tasa-fija.json
-          git commit -m 'Refresca la referencia de tasa fija'
+          git add src/lib/reference
+          git commit -m 'Refresca la referencia de los universos'
           git push

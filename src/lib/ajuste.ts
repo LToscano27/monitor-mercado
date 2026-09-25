@@ -1,11 +1,14 @@
 /**
  * Ajuste de la curva de mercado.
  *
- * Esto es geometría del gráfico, no valuación: los rendimientos vienen ya
- * calculados del backend y acá no se toca ninguno. El ajuste vive en el
- * cliente porque depende de qué puntos están visibles, y eso lo decide el
- * lector con el control de "ocultar datos marcados".
+ * Los rendimientos vienen ya calculados y acá no se toca ninguno: esto es
+ * sólo la curva que pasa entre ellos. Lo usan el gráfico, que la redibuja con
+ * los puntos que el lector deje visibles, y el backend, que la necesita para
+ * evaluar las dos curvas en fechas comunes.
  */
+
+import type { InstrumentRow } from './types';
+
 
 export interface AjusteLogaritmico {
   /** TEA = a + b · ln(días) */
@@ -81,4 +84,33 @@ export function regresionLogaritmica(puntos: PuntoAjuste[]): AjusteLogaritmico |
     hasta: Math.max(...dias),
     evaluar: (d: number) => a + b * Math.log(d),
   };
+}
+
+/**
+ * A un día hábil o menos del vencimiento, la tasa implícita deja de ser
+ * información: el plazo es tan corto que un centavo de precio la mueve casi un
+ * punto básico por cada día que falta. Esos papeles entran a la pantalla igual
+ * —en la tabla, con su precio y su variación— pero salen de la curva por
+ * defecto, para no torcer el ajuste con un punto que es ruido.
+ *
+ * Es un default, no una regla: la ficha del papel sigue ahí y con un clic
+ * vuelve.
+ */
+export const HABILES_MINIMOS_EN_CURVA = 2;
+
+/** Si un instrumento está en la curva cuando nadie decidió nada a mano. */
+export function entraALaCurvaPorDefecto(
+  i: Pick<InstrumentRow, 'businessDaysToMaturity'>,
+): boolean {
+  return i.businessDaysToMaturity >= HABILES_MINIMOS_EN_CURVA;
+}
+
+/** Puntos del ajuste con la regla por defecto: sin marcas y lejos del vencimiento. */
+export function puntosDelAjuste(
+  instrumentos: readonly InstrumentRow[],
+  metrica: 'tem' | 'tea',
+): PuntoAjuste[] {
+  return instrumentos
+    .filter((i) => entraALaCurvaPorDefecto(i) && i.quality.level === 'ok' && i[metrica] !== null)
+    .map((i) => ({ dias: i.daysToMaturity, valor: i[metrica] as number }));
 }

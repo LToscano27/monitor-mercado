@@ -22,8 +22,31 @@ export const MARKET_TIMEZONE = 'America/Argentina/Buenos_Aires';
  * Feriados bursátiles ARS que caen en día hábil.
  * Hay que mantenerlo al día: un feriado faltante corre la fecha de
  * liquidación un día y mueve visiblemente la tasa de los papeles cortos.
+ *
+ * Los años cerrados no se escribieron de memoria: salen de cruzar dos
+ * calendarios observados, los días en que BYMA publicó rueda para AL30 y los
+ * días en que el BCRA publicó el mayorista de la Com. A 3500. Es feriado lo
+ * que falta en los dos. Hacen falta por la curva CER: su capital se ajusta
+ * con el CER de diez hábiles antes de la emisión, y hay papeles emitidos en
+ * 2024. Antes de septiembre de 2024 BYMA no tiene serie y manda el BCRA.
+ *
+ * Los dos calendarios discrepan en días como el del bancario o los puentes
+ * turísticos (2026-03-23, 2026-07-10): el BCRA no publica y BYMA opera. Acá
+ * cuenta el mercado, que es el que liquida.
  */
 export const MARKET_HOLIDAYS: readonly string[] = [
+  // 2023 (sólo diciembre: nada del universo se emitió antes)
+  '2023-12-08', '2023-12-25',
+  // 2024
+  '2024-01-01', '2024-02-12', '2024-02-13', '2024-03-28', '2024-03-29',
+  '2024-04-01', '2024-04-02', '2024-05-01', '2024-06-17', '2024-06-20',
+  '2024-06-21', '2024-07-09', '2024-10-11', '2024-11-18', '2024-12-25',
+  '2024-12-31',
+  // 2025
+  '2025-01-01', '2025-03-03', '2025-03-04', '2025-03-24', '2025-04-02',
+  '2025-04-17', '2025-04-18', '2025-05-01', '2025-05-02', '2025-06-16',
+  '2025-06-20', '2025-07-09', '2025-08-15', '2025-10-10', '2025-11-24',
+  '2025-12-08', '2025-12-25', '2025-12-31',
   // 2026
   '2026-01-01', '2026-02-16', '2026-02-17', '2026-03-24', '2026-04-02',
   '2026-04-03', '2026-05-01', '2026-05-25', '2026-06-15', '2026-06-20',
@@ -142,6 +165,22 @@ export function businessDaysBetween(from: Date, to: Date): number {
 }
 
 /**
+ * La fecha que está `n` días hábiles antes de otra.
+ *
+ * Es el rezago del CER: los papeles ajustables toman el coeficiente de diez
+ * hábiles antes de la emisión, de la liquidación y del vencimiento.
+ */
+export function restarDiasHabiles(fecha: Date, n: number): Date {
+  let cursor = fecha;
+  let restantes = n;
+  while (restantes > 0) {
+    cursor = addDays(cursor, -1);
+    if (isBusinessDay(cursor)) restantes -= 1;
+  }
+  return cursor;
+}
+
+/**
  * Fecha de liquidación T+1: el siguiente día hábil posterior a la rueda.
  * Si la rueda cae en día no hábil, primero se rolea al hábil anterior.
  */
@@ -214,6 +253,17 @@ export function effectiveAnnualRate(
   return (finalPayment / price) ** (DAY_COUNT_BASIS / daysToMaturity) - 1;
 }
 
+/**
+ * Rezago del CER en los títulos ajustables del Tesoro.
+ *
+ * Lo fija cada emisión, y es el mismo en todas: el capital "será ajustado por
+ * el CER informado por el BCRA, correspondiente al período transcurrido entre
+ * los 10 días hábiles anteriores a la fecha de emisión y los 10 días hábiles
+ * anteriores a la fecha de vencimiento". Textual de la ficha técnica de BYMA
+ * de TZX27, X30N6 y XBF27.
+ */
+export const CER_LAG_BUSINESS_DAYS = 10;
+
 /** Metadata de convenciones que viaja en la respuesta del endpoint. */
 export const CONVENTIONS_META = {
   dayCountBasis: 'actual/365',
@@ -223,3 +273,15 @@ export const CONVENTIONS_META = {
   temDefinition: '(pagoFinal/precio)^(30/díasAlVencimiento) - 1',
   teaDefinition: '(pagoFinal/precio)^(365/díasAlVencimiento) - 1',
 } as const;
+
+/** Metadata de convenciones de la curva CER. */
+export const CER_CONVENTIONS_META = {
+  dayCountBasis: 'actual/365',
+  settlement: 'T+1 hábil',
+  daysPerMonth: DAYS_PER_MONTH,
+  capitalization: `capital × CER(liquidación − ${CER_LAG_BUSINESS_DAYS} hábiles) / CER(emisión − ${CER_LAG_BUSINESS_DAYS} hábiles)`,
+  temDefinition: '(capitalAjustado/precio)^(30/díasAlVencimiento) - 1, real',
+  teaDefinition: '(capitalAjustado/precio)^(365/díasAlVencimiento) - 1, real',
+} as const;
+
+export type ConventionsMeta = typeof CONVENTIONS_META | typeof CER_CONVENTIONS_META;

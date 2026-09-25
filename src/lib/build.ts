@@ -1,6 +1,5 @@
 import {
   businessDaysBetween,
-  CONVENTIONS_META,
   daysBetween,
   isWithinTradingHours,
   marketToday,
@@ -12,13 +11,13 @@ import {
 import { evaluateQuote, worstLevel } from './quality';
 import * as byma from './sources/byma';
 import type {
+  InstrumentReference,
   InstrumentRow,
   QualityFlag,
   Quote,
   UniverseResponse,
-  ZeroCouponReference,
 } from './types';
-import type { UniverseDefinition } from './universes/types';
+import type { AnyUniverse } from './universes/types';
 
 /**
  * Presupuesto total del request, por debajo del maxDuration de la función.
@@ -39,14 +38,17 @@ const CLOSING_TIMEOUT_MAX_MS = 12_000;
  * se comía el maxDuration de la función y el request terminaba en 504.
  */
 const DESCUBRIMIENTO_TIMEOUT_MS = 6_000;
+/**
+ * Techo para traer lo que la valuación necesita además del precio (el CER).
+ * Va aparte del presupuesto de cotizaciones por la misma razón que el
+ * descubrimiento: sin techo propio, una API colgada termina en 504.
+ */
+const CONTEXTO_TIMEOUT_MS = 6_000;
 /** Debajo de esto no vale la pena arrancar un intento. */
 const MINIMO_UTIL_MS = 1_500;
 
 /** Offset fijo de la plaza local. Argentina no aplica horario de verano. */
 const MARKET_UTC_OFFSET = '-03:00';
-
-/** Patrón de ticker base del Tesoro, usado para detectar especies nuevas. */
-const BASE_TICKER = /^[STM][A-Z0-9]{2,3}[0-9]$/;
 
 interface QuoteFetchResult {
   quotes: Map<string, Quote>;
@@ -85,7 +87,7 @@ function crearPresupuesto(total = PRESUPUESTO_MS) {
  */
 function panelTieneDatos(
   quotes: Map<string, Quote>,
-  universe: UniverseDefinition,
+  universe: AnyUniverse,
 ): boolean {
   for (const symbol of universe.reference.keys()) {
     const q = quotes.get(symbol);
@@ -107,7 +109,7 @@ function panelTieneDatos(
  * respuesta — un error explícito antes que una curva inventada.
  */
 async function fetchQuotes(
-  universe: UniverseDefinition,
+  universe: AnyUniverse,
   ahora: Date,
 ): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
@@ -165,7 +167,7 @@ async function fetchQuotes(
 }
 
 export async function buildUniverse(
-  universe: UniverseDefinition,
+  universe: AnyUniverse,
   now: Date = new Date(),
 ): Promise<UniverseResponse> {
   const { quotes, session, warnings } = await fetchQuotes(universe, now);
@@ -195,7 +197,7 @@ export async function buildUniverse(
    * La referencia versionada queda como base y como lugar de los overrides
    * manuales, no como lista cerrada.
    */
-  const vigentes = new Map<string, ZeroCouponReference>();
+  const vigentes = new Map<string, InstrumentReference>();
   for (const [symbol, ref] of universe.reference) {
     if (ref.maturityDate > tradeDateIso) vigentes.set(symbol, ref);
   }
@@ -203,7 +205,7 @@ export async function buildUniverse(
   const desconocidos = [...quotes.entries()]
     .filter(
       ([symbol, quote]) =>
-        BASE_TICKER.test(symbol) &&
+        universe.candidateSymbol.test(symbol) &&
         !vigentes.has(symbol) &&
         !universe.reference.has(symbol) &&
         !universe.knownNonMembers.has(symbol) &&
@@ -229,6 +231,22 @@ export async function buildUniverse(
       }
     } catch (err) {
       warnings.push(`No se pudieron resolver especies nuevas (${(err as Error).message}).`);
+    }
+  }
+
+  // Lo que la valuación necesita además del precio, una sola vez para todo el
+  // universo. Si no llega, los papeles salen igual —con precio y variación—
+  // pero sin rendimiento y marcados.
+  let contexto: unknown;
+  if (universe.prepararValuacion) {
+    try {
+      contexto = await universe.prepararValuacion(
+        [...vigentes.values()],
+        settlement,
+        AbortSignal.timeout(CONTEXTO_TIMEOUT_MS),
+      );
+    } catch (err) {
+      warnings.push(`No se pudieron traer los datos de valuación (${(err as Error).message}).`);
     }
   }
 
@@ -293,7 +311,7 @@ export async function buildUniverse(
       });
     }
 
-    const valuation = universe.valuate(ref, quote, price, liquidacion);
+    const valuation = universe.valuate(ref, quote, price, liquidacion, contexto);
     if (price !== null && valuation === null) {
       flags.push({
         code: 'MISSING_REFERENCE',
@@ -324,6 +342,7 @@ export async function buildUniverse(
       tem: valuation?.tem ?? null,
       tea: valuation?.tea ?? null,
       finalPayment: valuation?.finalPayment ?? null,
+      cer: valuation?.cer ?? null,
       bid: quote.bid,
       ask: quote.ask,
       volumeAmount: quote.volumeAmount,
@@ -334,12 +353,7 @@ export async function buildUniverse(
         ? `${tradeDateIso}T${quote.lastTradeTime}${MARKET_UTC_OFFSET}`
         : null,
       quality: { level: worstLevel(flags), flags },
-      reference: {
-        issueDate: ref.issueDate,
-        issueTem: ref.issueTem,
-        temSource: ref.temSource,
-        isin: ref.isin,
-      },
+      reference: referenciaDeFila(ref),
     });
   }
 
@@ -353,14 +367,24 @@ export async function buildUniverse(
     settlementDate: toIsoDate(settlement),
     fetchedAt: now.toISOString(),
     source: 'byma',
-    conventions: CONVENTIONS_META,
+    conventions: universe.conventions,
     instruments,
     warnings,
   };
 }
 
+/** Lo que viaja de la referencia. Los campos de tasa fija, sólo si los hay. */
+function referenciaDeFila(ref: InstrumentReference): InstrumentRow['reference'] {
+  const conTem = ref as InstrumentReference & Partial<Pick<NonNullable<InstrumentRow['reference']>, 'issueTem' | 'temSource'>>;
+  return {
+    issueDate: ref.issueDate,
+    isin: ref.isin,
+    ...(conTem.issueTem !== undefined && { issueTem: conTem.issueTem, temSource: conTem.temSource }),
+  };
+}
+
 function emptyRow(
-  ref: ZeroCouponReference,
+  ref: InstrumentReference,
   daysToMaturity: number,
   businessDaysToMaturity: number,
   settlementBasis: InstrumentRow['settlementBasis'],
@@ -381,6 +405,7 @@ function emptyRow(
     tem: null,
     tea: null,
     finalPayment: null,
+    cer: null,
     bid: null,
     ask: null,
     volumeAmount: null,
@@ -389,11 +414,6 @@ function emptyRow(
     lastTradeTime: null,
     dataTimestamp: null,
     quality: { level: flag.level, flags: [flag] },
-    reference: {
-      issueDate: ref.issueDate,
-      issueTem: ref.issueTem,
-      temSource: ref.temSource,
-      isin: ref.isin,
-    },
+    reference: referenciaDeFila(ref),
   };
 }

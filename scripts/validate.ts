@@ -7,6 +7,7 @@
  *   npm run validate -- --universe=tasa-fija
  */
 import { monto } from '../src/lib/format';
+import { puntosDelAjuste, regresionLogaritmica } from '../src/lib/ajuste';
 import { buildUniverse } from '../src/lib/build';
 import { getUniverse, listUniverses } from '../src/lib/universes';
 
@@ -92,6 +93,29 @@ async function main() {
     }
   }
 
+  if (payload.instruments.some((i) => i.cer)) imprimirCer(payload);
+  else imprimirTasaFija(payload);
+
+  const ajuste = regresionLogaritmica(puntosDelAjuste(payload.instruments, 'tea'));
+  console.log('\nAJUSTE  TEA = a + b · ln(días), sin marcados ni papeles a menos de 2 hábiles');
+  if (ajuste) {
+    console.log(
+      `  a = ${pct(ajuste.a, 3)}%   b = ${pct(ajuste.b, 3)}%   R² = ${ajuste.r2.toFixed(3)}   n = ${ajuste.n}   días ${ajuste.desde}–${ajuste.hasta}`,
+    );
+  } else {
+    console.log('  sin puntos suficientes');
+  }
+
+  if (payload.warnings.length > 0) {
+    console.log('\nWARNINGS DE UNIVERSO');
+    for (const w of payload.warnings) console.log(`  · ${w}`);
+  }
+  console.log();
+}
+
+type Payload = Awaited<ReturnType<typeof buildUniverse>>;
+
+function imprimirTasaFija(payload: Payload) {
   console.log('\nREFERENCIA (para verificar el pago al vencimiento a mano)');
   console.log(
     ['  TICKER'.padEnd(8), 'EMISIÓN'.padEnd(10), 'VENCE'.padEnd(10), 'TEM EMIS'.padStart(9), 'ORIGEN'.padStart(11)].join(' '),
@@ -103,17 +127,51 @@ async function main() {
         `  ${i.ticker}`.padEnd(8),
         i.reference.issueDate.padEnd(10),
         i.maturityDate.padEnd(10),
-        `${(i.reference.issueTem * 100).toFixed(2)}%`.padStart(9),
-        i.reference.temSource.padStart(11),
+        `${pct(i.reference.issueTem ?? null)}%`.padStart(9),
+        (i.reference.temSource ?? '—').padStart(11),
       ].join(' '),
     );
   }
+}
 
-  if (payload.warnings.length > 0) {
-    console.log('\nWARNINGS DE UNIVERSO');
-    for (const w of payload.warnings) console.log(`  · ${w}`);
+/**
+ * Todo lo que hace falta para rehacer a mano el rendimiento real de un CER:
+ * de qué fecha es cada coeficiente, cuánto vale, y el capital que sale de
+ * dividirlos.
+ */
+function imprimirCer(payload: Payload) {
+  console.log('\nCER  capital ajustado = 100 × CER liquidación / CER emisión, cada CER a 10 hábiles antes');
+  const header = [
+    '  TICKER'.padEnd(8),
+    'VENCE'.padEnd(10),
+    'DÍAS'.padStart(5),
+    'PRECIO'.padStart(9),
+    'EMISIÓN'.padEnd(10),
+    'CER EMISIÓN'.padStart(21),
+    'CER LIQUIDACIÓN'.padStart(21),
+    'CAP.AJUST'.padStart(10),
+    'TEM R%'.padStart(7),
+    'TEA R%'.padStart(7),
+  ].join(' ');
+  console.log(header);
+  console.log('─'.repeat(header.length));
+  for (const i of payload.instruments) {
+    const c = i.cer;
+    console.log(
+      [
+        `${QUALITY_MARK[i.quality.level]} ${i.ticker}`.padEnd(8),
+        i.maturityDate.padEnd(10),
+        String(i.daysToMaturity).padStart(5),
+        num(i.lastPrice).padStart(9),
+        (i.reference?.issueDate ?? '—').padEnd(10),
+        (c ? `${c.emision.valor.toFixed(4)} (${c.emision.fecha})` : '—').padStart(21),
+        (c ? `${c.liquidacion.valor.toFixed(4)} (${c.liquidacion.fecha})` : '—').padStart(21),
+        num(c?.capitalAjustado ?? null).padStart(10),
+        pct(i.tem).padStart(7),
+        pct(i.tea).padStart(7),
+      ].join(' '),
+    );
   }
-  console.log();
 }
 
 main().catch((err) => {
