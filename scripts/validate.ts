@@ -97,7 +97,7 @@ async function main() {
   else imprimirTasaFija(payload);
 
   const ajuste = regresionLogaritmica(puntosDelAjuste(payload.instruments, 'tea'));
-  console.log('\nAJUSTE  TEA = a + b · ln(días), sin marcados ni papeles a menos de 2 hábiles');
+  console.log('\nAJUSTE  TEA = a + b · ln(días), sólo cero cupón, sin marcados ni papeles a menos de 2 hábiles');
   if (ajuste) {
     console.log(
       `  a = ${pct(ajuste.a, 3)}%   b = ${pct(ajuste.b, 3)}%   R² = ${ajuste.r2.toFixed(3)}   n = ${ajuste.n}   días ${ajuste.desde}–${ajuste.hasta}`,
@@ -140,15 +140,22 @@ function imprimirTasaFija(payload: Payload) {
  * dividirlos.
  */
 function imprimirCer(payload: Payload) {
-  console.log('\nCER  capital ajustado = 100 × CER liquidación / CER emisión, cada CER a 10 hábiles antes');
+  console.log(
+    '\nCER  capital ajustado = 100 × residual × capitalización × CER liquidación / CER emisión (cada CER a 10 hábiles antes)',
+  );
+  const ESTRUCTURA = { 'cero-cupon': 'cero', 'con-cupon': 'cupón', dual: 'dual' } as const;
   const header = [
     '  TICKER'.padEnd(8),
+    'TIPO'.padEnd(5),
     'VENCE'.padEnd(10),
     'DÍAS'.padStart(5),
-    'PRECIO'.padStart(9),
+    'DUR'.padStart(5),
+    'PRECIO'.padStart(10),
     'EMISIÓN'.padEnd(10),
     'CER EMISIÓN'.padStart(21),
-    'CER LIQUIDACIÓN'.padStart(21),
+    'CER LIQ'.padStart(9),
+    'K'.padStart(6),
+    'RESID'.padStart(6),
     'CAP.AJUST'.padStart(10),
     'TEM R%'.padStart(7),
     'TEA R%'.padStart(7),
@@ -160,18 +167,24 @@ function imprimirCer(payload: Payload) {
     console.log(
       [
         `${QUALITY_MARK[i.quality.level]} ${i.ticker}`.padEnd(8),
+        ESTRUCTURA[i.estructura].padEnd(5),
         i.maturityDate.padEnd(10),
         String(i.daysToMaturity).padStart(5),
-        num(i.lastPrice).padStart(9),
+        (i.durationDays === null ? '—' : String(Math.round(i.durationDays))).padStart(5),
+        num(i.lastPrice, 2).padStart(10),
         (i.reference?.issueDate ?? '—').padEnd(10),
         (c ? `${c.emision.valor.toFixed(4)} (${c.emision.fecha})` : '—').padStart(21),
-        (c ? `${c.liquidacion.valor.toFixed(4)} (${c.liquidacion.fecha})` : '—').padStart(21),
-        num(c?.capitalAjustado ?? null).padStart(10),
+        (c ? c.liquidacion.valor.toFixed(4) : '—').padStart(9),
+        (c ? c.coeficienteCapitalizacion.toFixed(4) : '—').padStart(6),
+        (c ? `${(c.residual * 100).toFixed(0)}%` : '—').padStart(6),
+        num(c?.capitalAjustado ?? null, 2).padStart(10),
         pct(i.tem).padStart(7),
         pct(i.tea).padStart(7),
       ].join(' '),
     );
   }
+  const liq = payload.instruments.find((i) => i.cer)?.cer?.liquidacion;
+  if (liq) console.log(`  CER de liquidación: ${liq.valor.toFixed(4)} del ${liq.fecha}`);
 }
 
 main().catch((err) => {

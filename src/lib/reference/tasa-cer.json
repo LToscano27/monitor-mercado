@@ -1,125 +1,246 @@
 {
-  "generatedAt": "2026-09-25T19:04:06.006Z",
+  "generatedAt": "2026-09-25T19:24:20.357Z",
   "source": "BYMA ficha técnica (bnown/fichatecnica/especies/general)",
   "instruments": [
+    {
+      "symbol": "CUAP",
+      "name": "TITULOS CUASIPAR EN PESOS CON VENCIMIENTO EN DICIEMBRE DE 2045",
+      "isin": "ARARGE03E139",
+      "issueDate": "2003-12-31",
+      "maturityDate": "2045-12-31",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "DICP",
+      "name": "TÍTULOS DISCOUNT EN PESOS REGIDOS POR LEY ARGENTINA CON VENCIMIENTO EN DICIEMBRE DE 2033 (AJUSTABLES POR CERi)",
+      "isin": "ARARGE03E121",
+      "issueDate": "2003-12-31",
+      "maturityDate": "2033-12-31",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "DIP0",
+      "name": "BONOS DE LA REPUBLICA ARGENTINA DISCOUNT EN PESOS REGIDOS POR LA LEY ARGENTINA (AJUSTABLES POR CER)",
+      "isin": "ARARGE03G696",
+      "issueDate": "2003-12-31",
+      "maturityDate": "2033-12-31",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "PAP0",
+      "name": "BONOS DE LA REPUBLICA ARGENTINA A LA PAR EN PESOS REGIDOS POR LA LEY ARGENTINA (AJUSTABLES POR CER)",
+      "isin": "ARARGE03G712",
+      "issueDate": "2003-12-31",
+      "maturityDate": "2038-12-31",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "PARP",
+      "name": "TITULOS PAR DENOMINADOS EN PESOS",
+      "isin": "ARARGE03E105",
+      "issueDate": "2003-12-31",
+      "maturityDate": "2038-12-31",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "TX26",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS CON AJUSTE POR CER 2% VTO. 2026",
+      "isin": "ARARGE3209W8",
+      "issueDate": "2020-09-04",
+      "maturityDate": "2026-11-09",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "TX28",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS CON AJUSTE POR CER 2,25% VTO 2028",
+      "isin": "ARARGE3209X6",
+      "issueDate": "2020-09-04",
+      "maturityDate": "2028-11-09",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "TX31",
+      "name": "BONOS DEL TESORO NACIONAL EN PESOS AJUSTADO POR CER 2,50% VENCIMIENTO 30 DE NOVIEMBRE DE 2031",
+      "isin": "ARARGE320CX8",
+      "issueDate": "2022-05-31",
+      "maturityDate": "2031-11-30",
+      "estructura": "con-cupon"
+    },
+    {
+      "symbol": "TXMD8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 15 DE DICIEMBRE DE 2028",
+      "isin": "AR0926114783",
+      "issueDate": "2026-06-12",
+      "maturityDate": "2028-12-15",
+      "estructura": "dual"
+    },
+    {
+      "symbol": "TXMD9",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 14 DE DICIEMBRE DE 2029",
+      "isin": "AR0917535343",
+      "issueDate": "2026-06-12",
+      "maturityDate": "2029-12-14",
+      "estructura": "dual"
+    },
+    {
+      "symbol": "TXMJ0",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 28 DE JUNIO DE 2030",
+      "isin": "AR0268283071",
+      "issueDate": "2026-06-12",
+      "maturityDate": "2030-06-28",
+      "estructura": "dual"
+    },
+    {
+      "symbol": "TXMJ8",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 30 DE JUNIO DE 2028",
+      "isin": "AR0603123321",
+      "issueDate": "2026-05-15",
+      "maturityDate": "2028-06-30",
+      "estructura": "dual"
+    },
+    {
+      "symbol": "TXMJ9",
+      "name": "BONO DEL TESORO NACIONAL EN PESOS DUAL CER / TAMAR CON VENCIMIENTO 29 DE JUNIO DE 2029",
+      "isin": "AR0585812156",
+      "issueDate": "2026-04-30",
+      "maturityDate": "2029-06-29",
+      "estructura": "dual"
+    },
     {
       "symbol": "TZX27",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE JUNIO DE 2027",
       "isin": "AR0487777218",
       "issueDate": "2024-02-01",
-      "maturityDate": "2027-06-30"
+      "maturityDate": "2027-06-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZX28",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE JUNIO DE 2028",
       "isin": "AR0404416296",
       "issueDate": "2024-02-01",
-      "maturityDate": "2028-06-30"
+      "maturityDate": "2028-06-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXA7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE ABRIL DE 2027",
       "isin": "AR0320223842",
       "issueDate": "2025-11-28",
-      "maturityDate": "2027-04-30"
+      "maturityDate": "2027-04-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXD6",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2026",
       "isin": "AR0465304779",
       "issueDate": "2024-03-15",
-      "maturityDate": "2026-12-15"
+      "maturityDate": "2026-12-15",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXD7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2027",
       "isin": "AR0611949808",
       "issueDate": "2024-03-15",
-      "maturityDate": "2027-12-15"
+      "maturityDate": "2027-12-15",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXD8",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 15 DE DICIEMBRE DE 2028",
       "isin": "AR0695340130",
       "issueDate": "2026-06-30",
-      "maturityDate": "2028-12-15"
+      "maturityDate": "2028-12-15",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXM7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 31 DE MARZO DE 2027",
       "isin": "AR0465885959",
       "issueDate": "2024-05-17",
-      "maturityDate": "2027-03-31"
+      "maturityDate": "2027-03-31",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXM8",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 31 DE MARZO 2028",
       "isin": "AR0721284450",
       "issueDate": "2026-03-31",
-      "maturityDate": "2028-03-31"
+      "maturityDate": "2028-03-31",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXM9",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 28 DE MARZO 2029",
       "isin": "AR0624565625",
       "issueDate": "2026-03-31",
-      "maturityDate": "2029-03-28"
+      "maturityDate": "2029-03-28",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXO6",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE OCTUBRE DE 2026",
       "isin": "AR0881212424",
       "issueDate": "2024-10-31",
-      "maturityDate": "2026-10-30"
+      "maturityDate": "2026-10-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXO7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 29 DE OCTUBRE DE 2027",
       "isin": "AR0919348364",
       "issueDate": "2026-06-29",
-      "maturityDate": "2027-10-29"
+      "maturityDate": "2027-10-29",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXS7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 30 DE SEPTIEMBRE DE 2027",
       "isin": "AR0612098712",
       "issueDate": "2026-03-31",
-      "maturityDate": "2027-09-30"
+      "maturityDate": "2027-09-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXS8",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN CON AJUSTE POR CER VENCIMIENTO 29 DE SEPTIEMBRE DE 2028",
       "isin": "AR0667778010",
       "issueDate": "2026-03-31",
-      "maturityDate": "2028-09-29"
+      "maturityDate": "2028-09-29",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "TZXY7",
       "name": "BONO DEL TESORO NACIONAL EN PESOS CERO CUPÓN AJUSTABLE POR CER VENCIMIENTO 31 DE MAYO DE 2027",
       "isin": "AR0286465007",
       "issueDate": "2025-12-15",
-      "maturityDate": "2027-05-31"
+      "maturityDate": "2027-05-31",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "X29E7",
       "name": "LETRA DEL TESORO NACIONAL EN PESOS AJUSTADA POR CER A DESCUENTO VENCIMIENTO 29 DE ENERO DE 2027",
       "isin": "AR0744490605",
       "issueDate": "2026-08-14",
-      "maturityDate": "2027-01-29"
+      "maturityDate": "2027-01-29",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "X30N6",
       "name": "LETRA DEL TESORO NACIONAL EN PESOS AJUSTADA POR CER A DESCUENTO VENCIMIENTO 30 DE NOVIEMBRE DE 2026",
       "isin": "AR0933792183",
       "issueDate": "2025-12-15",
-      "maturityDate": "2026-11-30"
+      "maturityDate": "2026-11-30",
+      "estructura": "cero-cupon"
     },
     {
       "symbol": "X30S6",
       "name": "LETRA DEL TESORO NACIONAL EN PESOS AJUSTADA POR CER A DESCUENTO VENCIMIENTO 30 DE SEPTIEMBRE DE 2026",
       "isin": "AR0362438175",
       "issueDate": "2026-03-16",
-      "maturityDate": "2026-09-30"
+      "maturityDate": "2026-09-30",
+      "estructura": "cero-cupon"
     }
   ],
   "nonMembers": [],

@@ -35,7 +35,12 @@ export const MARKET_TIMEZONE = 'America/Argentina/Buenos_Aires';
  * cuenta el mercado, que es el que liquida.
  */
 export const MARKET_HOLIDAYS: readonly string[] = [
-  // 2023 (sólo diciembre: nada del universo se emitió antes)
+  // Ventanas sueltas, las justas para el CER base de los CER con cupón: diez
+  // hábiles antes del 31/12/2003 (Discount, Par, Cuasipar), del 04/09/2020
+  // (TX26, TX28) y del 31/05/2022 (TX31). Del BCRA, que es lo que hay para
+  // esos años.
+  '2003-12-08', '2003-12-25', '2020-08-17', '2022-05-18', '2022-05-25',
+  // 2023 (sólo diciembre)
   '2023-12-08', '2023-12-25',
   // 2024
   '2024-01-01', '2024-02-12', '2024-02-13', '2024-03-28', '2024-03-29',
@@ -227,6 +232,23 @@ function addMonthsClamped(date: Date, months: number): Date {
   );
 }
 
+/**
+ * Días entre dos fechas en base 30/360 (convención US, la de los bonos
+ * del Tesoro con cupón): un 31 cuenta como 30, y el 31 final sólo se corta
+ * si el inicio ya era fin de mes.
+ */
+export function dias30360(desde: Date, hasta: Date): number {
+  let d1 = desde.getUTCDate();
+  let d2 = hasta.getUTCDate();
+  if (d1 === 31) d1 = 30;
+  if (d2 === 31 && d1 === 30) d2 = 30;
+  return (
+    (hasta.getUTCFullYear() - desde.getUTCFullYear()) * 360 +
+    (hasta.getUTCMonth() - desde.getUTCMonth()) * 30 +
+    (d2 - d1)
+  );
+}
+
 // ─── Rendimientos ────────────────────────────────────────────────────────
 
 /**
@@ -279,9 +301,9 @@ export const CER_CONVENTIONS_META = {
   dayCountBasis: 'actual/365',
   settlement: 'T+1 hábil',
   daysPerMonth: DAYS_PER_MONTH,
-  capitalization: `capital × CER(liquidación − ${CER_LAG_BUSINESS_DAYS} hábiles) / CER(emisión − ${CER_LAG_BUSINESS_DAYS} hábiles)`,
-  temDefinition: '(capitalAjustado/precio)^(30/díasAlVencimiento) - 1, real',
-  teaDefinition: '(capitalAjustado/precio)^(365/díasAlVencimiento) - 1, real',
+  capitalization: `flujos × CER(liquidación − ${CER_LAG_BUSINESS_DAYS} hábiles) / CER(emisión − ${CER_LAG_BUSINESS_DAYS} hábiles)`,
+  temDefinition: '(1 + TEA real)^(30/365) - 1',
+  teaDefinition: 'TIR real: precio = Σ flujo ajustado / (1 + TEA)^(días/365); en un cero cupón, (capitalAjustado/precio)^(365/días) - 1',
 } as const;
 
 export type ConventionsMeta = typeof CONVENTIONS_META | typeof CER_CONVENTIONS_META;

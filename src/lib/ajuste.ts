@@ -105,12 +105,25 @@ export function entraALaCurvaPorDefecto(
   return i.businessDaysToMaturity >= HABILES_MINIMOS_EN_CURVA;
 }
 
-/** Puntos del ajuste con la regla por defecto: sin marcas y lejos del vencimiento. */
+/**
+ * Puntos del ajuste con la regla por defecto: cero cupón, sin marcas y lejos
+ * del vencimiento.
+ *
+ * Sólo los cero cupón porque la curva mide la tasa pura a cada plazo. Un bono
+ * que paga cupón promedia varios plazos y un dual trae una opción adentro: los
+ * dos se muestran, pero no definen la curva.
+ */
 export function puntosDelAjuste(
   instrumentos: readonly InstrumentRow[],
   metrica: 'tem' | 'tea',
 ): PuntoAjuste[] {
   return instrumentos
-    .filter((i) => entraALaCurvaPorDefecto(i) && i.quality.level === 'ok' && i[metrica] !== null)
+    .filter(
+      (i) =>
+        i.estructura === 'cero-cupon' &&
+        entraALaCurvaPorDefecto(i) &&
+        i.quality.level === 'ok' &&
+        i[metrica] !== null,
+    )
     .map((i) => ({ dias: i.daysToMaturity, valor: i[metrica] as number }));
 }

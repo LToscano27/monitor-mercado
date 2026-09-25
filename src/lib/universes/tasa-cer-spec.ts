@@ -14,17 +14,20 @@ import type { BymaPanel } from '../sources/byma';
 export const TASA_CER_PANELS: readonly BymaPanel[] = ['lebacs', 'public-bonds'];
 
 /**
- * Tickers base de los CER cero cupón.
+ * Tickers base de los títulos CER.
  *
- *   TZX + mes + año   BONCER cero cupón     TZXO6, TZXD7, TZXM9
- *   TZX + año         BONCER cero cupón     TZX27, TZX28
- *   X + día + mes + año   LECER a descuento     X30S6, X29E7
+ *   TZX + mes + año      BONCER cero cupón        TZXO6, TZXD7, TZX27
+ *   X + día + mes + año  LECER a descuento        X30S6, X29E7
+ *   TX + año             BONCER con cupón         TX26, TX28, TX31
+ *   TXM + mes + año      duales CER/TAMAR         TXMJ8, TXMD9
+ *   los del canje        Discount, Par, Cuasipar  DICP, DIP0, PARP, PAP0, CUAP
  *
- * Como en tasa fija, el último carácter tiene que ser un dígito: descarta de
- * una las variantes de liquidación en otra moneda.
+ * Como en tasa fija, las variantes de liquidación en otra moneda o plazo
+ * (DICPD, DICPX, TXM7X) no son candidatas: son la misma especie. Los del
+ * canje terminan en letra, así que van por nombre.
  *
- * Deja afuera a propósito los TX (TX26, TX28, TX31: pagan cupón y amortizan)
- * y los TXM (duales CER/TAMAR). La regex es un primer filtro; el que decide es
- * la ficha, en `tasa-cer-clasificador.ts`.
+ * La regex es un primer filtro; el que decide es la ficha, en
+ * `tasa-cer-clasificador.ts`.
  */
-export const CANDIDATE_SYMBOL = /^(TZX[A-Z0-9]{1,2}[0-9]|X[0-9]{2}[A-Z][0-9])$/;
+export const CANDIDATE_SYMBOL =
+  /^(TZX[A-Z0-9]{1,2}[0-9]|X[0-9]{2}[A-Z][0-9]|TX[0-9]{2}|TXM[A-Z][0-9]|DICP|DIP0|PARP|PAP0|CUAP)$/;

@@ -17,11 +17,14 @@ const REQUEST_TIMEOUT_MS = 8_000;
 const ID_CER = 30;
 
 /**
- * La API devuelve como mucho 3000 filas por pedido. El CER es diario con fines
- * de semana incluidos, así que 3000 filas son más de ocho años: alcanza con un
- * solo pedido para cualquier título vivo.
+ * La API devuelve como mucho 3000 filas por pedido, unos ocho años de CER.
+ * Los títulos del canje de 2005 toman su CER base de diciembre de 2003, así
+ * que hacen falta tres o cuatro páginas. Se pagina por `Offset` hasta que una
+ * vuelva incompleta.
  */
 const LIMITE_FILAS = 3000;
+/** Techo de páginas: más de 40 años de serie. Si se llega, algo cambió en la API. */
+const MAX_PAGINAS = 5;
 
 /**
  * El CER se publica de a un mes por vez —cuando el INDEC da a conocer el IPC,
@@ -58,7 +61,32 @@ async function traerSerie(
   desde: IsoDate,
   signal?: AbortSignal,
 ): Promise<SerieDiaria> {
-  const query = new URLSearchParams({ Desde: desde, Limit: String(LIMITE_FILAS) });
+  const porFecha = new Map<string, number>();
+  for (let pagina = 0; pagina < MAX_PAGINAS; pagina += 1) {
+    const filas = await traerPagina(id, desde, pagina * LIMITE_FILAS, signal);
+    for (const f of filas) porFecha.set(f.fecha.slice(0, 10), f.valor);
+    if (filas.length < LIMITE_FILAS) break;
+  }
+  if (porFecha.size === 0) throw new Error(`BCRA variable ${id} vino vacía desde ${desde}`);
+
+  const fechas = [...porFecha.keys()].sort();
+  return {
+    valor: (fecha) => porFecha.get(fecha) ?? null,
+    ultimaFecha: fechas[fechas.length - 1] ?? null,
+  };
+}
+
+async function traerPagina(
+  id: number,
+  desde: IsoDate,
+  offset: number,
+  signal?: AbortSignal,
+): Promise<{ fecha: string; valor: number }[]> {
+  const query = new URLSearchParams({
+    Desde: desde,
+    Limit: String(LIMITE_FILAS),
+    Offset: String(offset),
+  });
   const res = await fetch(`${BASE}/${id}?${query}`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: signal
@@ -67,15 +95,6 @@ async function traerSerie(
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`BCRA variable ${id} respondió ${res.status}`);
-
   const payload = (await res.json()) as RespuestaSerie;
-  const filas = payload.results?.[0]?.detalle ?? [];
-  if (filas.length === 0) throw new Error(`BCRA variable ${id} vino vacía desde ${desde}`);
-
-  const porFecha = new Map(filas.map((f) => [f.fecha.slice(0, 10), f.valor]));
-  const fechas = [...porFecha.keys()].sort();
-  return {
-    valor: (fecha) => porFecha.get(fecha) ?? null,
-    ultimaFecha: fechas[fechas.length - 1] ?? null,
-  };
+  return payload.results?.[0]?.detalle ?? [];
 }
