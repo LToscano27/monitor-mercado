@@ -1,5 +1,7 @@
 import type { BymaFicha } from '../sources/byma';
+import { temDeLicitacion } from '../sources/finanzas';
 import type { ZeroCouponReference } from '../types';
+import type { ReglasDeDescubrimiento } from './descubrimiento';
 import { MANUAL_ISSUE_TEM } from './tasa-fija-spec';
 
 /**
@@ -97,3 +99,19 @@ export function referenciaDesdeFicha(
     temSource: manual !== null ? 'manual' : deFicha !== null ? 'byma-ficha' : 'licitacion',
   };
 }
+
+export const reglasTasaFija: ReglasDeDescubrimiento<ZeroCouponReference> = {
+  clasificar,
+  // BYMA puede haber publicado la ficha sin la tasa: pasa con casi toda letra
+  // recién emitida. Sin ese dato no hay pago al vencimiento y por lo tanto no
+  // hay rendimiento, así que antes de dejarla afuera se la busca en el
+  // resultado de la licitación que la adjudicó, que es donde la publica el
+  // Tesoro.
+  async resolver(ficha, signal) {
+    const directa = referenciaDesdeFicha(ficha);
+    if (directa) return directa;
+    const deLicitacion = await temDeLicitacion(ficha.fechaVencimiento.slice(0, 10), signal);
+    return referenciaDesdeFicha(ficha, deLicitacion);
+  },
+  motivoSinResolver: 'sin TEM de emisión; cargarla en MANUAL_ISSUE_TEM',
+};

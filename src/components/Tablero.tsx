@@ -9,6 +9,7 @@ import { SelectorTema } from './SelectorTema';
 import { fechaCorta } from '@/lib/format';
 import { momentoVisible } from '@/lib/conventions';
 import estilos from './Tablero.module.css';
+import { entraALaCurvaPorDefecto } from '@/lib/ajuste';
 
 /**
  * Cada cuánto se vuelve a pedir el universo.
@@ -29,17 +30,6 @@ const HORA_PLAZA = new Intl.DateTimeFormat('es-AR', {
   hour12: false,
 });
 
-/**
- * A un día hábil o menos del vencimiento, la tasa implícita deja de ser
- * información: el plazo es tan corto que un centavo de precio la mueve casi un
- * punto básico por cada día que falta. Esos papeles entran a la pantalla igual
- * —en la tabla, con su precio y su variación— pero salen de la curva por
- * defecto, para no torcer el ajuste con un punto que es ruido.
- *
- * Es un default, no una regla: la ficha del papel sigue ahí y con un clic
- * vuelve.
- */
-const HABILES_MINIMOS_EN_CURVA = 2;
 
 const ETIQUETA_SESION: Record<UniverseResponse['session'], string> = {
   intradiaria: 'en curso',
@@ -65,7 +55,7 @@ export function Tablero({ slug, universos }: Props) {
     const fuera = new Set<string>();
     for (const i of datos?.instruments ?? []) {
       const decision = decisiones[i.ticker];
-      const porDefecto = i.businessDaysToMaturity < HABILES_MINIMOS_EN_CURVA;
+      const porDefecto = !entraALaCurvaPorDefecto(i);
       if (decision ? decision === 'fuera' : porDefecto) fuera.add(i.ticker);
     }
     return fuera;

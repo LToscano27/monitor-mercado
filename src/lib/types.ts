@@ -35,17 +35,46 @@ export interface Quote {
 
 export type SourceId = 'byma';
 
-/** Datos de referencia estáticos de un instrumento cero cupón capitalizable. */
-export interface ZeroCouponReference {
+/** Lo que todo instrumento del universo tiene en su referencia estática. */
+export interface InstrumentReference {
   symbol: string;
   name: string;
   isin: string | null;
   issueDate: IsoDate;
   maturityDate: IsoDate;
+}
+
+/** Datos de referencia estáticos de un instrumento cero cupón capitalizable. */
+export interface ZeroCouponReference extends InstrumentReference {
   /** TEM de emisión, en decimal (0.021 = 2,10%). */
   issueTem: number;
   /** De dónde salió issueTem. Viaja a la respuesta para trazabilidad. */
   temSource: 'byma-ficha' | 'manual' | 'licitacion';
+}
+
+/**
+ * Referencia de un título cero cupón ajustable por CER.
+ *
+ * No lleva tasa: el capital se ajusta por el coeficiente y se paga íntegro al
+ * vencimiento. Todo lo que hace falta para valuarlo son las dos fechas y el
+ * CER, que no es estático y se trae en cada request.
+ */
+export type CerReference = InstrumentReference;
+
+/** Un CER puntual: la fecha a la que se tomó y el valor publicado. */
+export interface CerPunto {
+  fecha: IsoDate;
+  valor: number;
+}
+
+/** Cómo se llegó al capital ajustado de un título CER, para verificarlo a mano. */
+export interface CerDetalle {
+  /** CER de diez hábiles antes de la emisión. */
+  emision: CerPunto;
+  /** CER de diez hábiles antes de la liquidación. */
+  liquidacion: CerPunto;
+  /** VN 100 × CER liquidación / CER emisión. */
+  capitalAjustado: number;
 }
 
 export type QualityLevel = 'ok' | 'warn' | 'bad';
@@ -106,8 +135,13 @@ export interface InstrumentRow {
   priceChangePct: number | null;
   tem: number | null;
   tea: number | null;
-  /** Monto que paga el instrumento al vencimiento por cada 100 de VN. */
+  /**
+   * Monto que paga el instrumento al vencimiento por cada 100 de VN.
+   * Null en los CER: su pago final depende de un CER que todavía no existe.
+   */
   finalPayment: number | null;
+  /** Sólo en los CER: de dónde sale el capital ajustado. */
+  cer: CerDetalle | null;
   bid: number | null;
   ask: number | null;
   volumeAmount: number | null;
@@ -122,9 +156,10 @@ export interface InstrumentRow {
   };
   reference: {
     issueDate: IsoDate;
-    issueTem: number;
-    temSource: ZeroCouponReference['temSource'];
     isin: string | null;
+    /** Sólo en tasa fija. */
+    issueTem?: number;
+    temSource?: ZeroCouponReference['temSource'];
   } | null;
 }
 
@@ -147,7 +182,7 @@ export interface UniverseResponse {
   /** Momento en que nuestro backend trajo el dato. */
   fetchedAt: string;
   source: SourceId;
-  conventions: typeof import('./conventions').CONVENTIONS_META;
+  conventions: import('./conventions').ConventionsMeta;
   instruments: InstrumentRow[];
   /** Problemas a nivel universo, no a nivel instrumento. */
   warnings: string[];
