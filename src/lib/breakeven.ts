@@ -1,4 +1,10 @@
-import { puntosDelAjuste, regresionLogaritmica, type AjusteLogaritmico } from './ajuste';
+import {
+  entraALaCurvaPorDefecto,
+  puntosDelAjuste,
+  regresionLogaritmica,
+  type AjusteLogaritmico,
+  type PuntoAjuste,
+} from './ajuste';
 import { buildUniverse } from './build';
 import {
   addDays,
@@ -13,7 +19,7 @@ import {
 } from './conventions';
 import { fetchCer } from './sources/bcra';
 import { fetchIpcMensual } from './sources/indec';
-import type { CerPunto } from './types';
+import type { CerPunto, InstrumentRow } from './types';
 import { tasaCer } from './universes/tasa-cer';
 import { tasaFija } from './universes/tasa-fija';
 
@@ -24,7 +30,12 @@ import { tasaFija } from './universes/tasa-fija';
  * Método: encadenado sobre curvas ajustadas. No se compara bono contra bono
  * —los vencimientos no coinciden y el encadenado amplifica el ruido de cada
  * precio—, sino las dos curvas ajustadas (TEA = a + b·ln días, sólo cero
- * cupón) evaluadas en las mismas fechas.
+ * cupón) evaluadas en las mismas fechas. La real se ajusta sólo en el tramo
+ * que cubre la nominal (ver `tramoComun`).
+ *
+ * Los pares que sí vencen el mismo día no se usan para calcular: se usan de
+ * control. Su breakeven acumulado es exacto, y si la curva se aparta de él,
+ * se marca.
  *
  * ── El rezago, que es lo que decide qué mes mide cada tramo ──
  *
@@ -133,6 +144,32 @@ export interface MesBreakeven {
   marcas: MarcaForward[];
 }
 
+/**
+ * Control contra un par de títulos que vencen el mismo día: una LECAP o
+ * BONCAP y un CER. Su breakeven acumulado es exacto —no pasa por ninguna
+ * curva— y sirve para ver si el ajuste se aparta del mercado.
+ */
+export interface ControlPar {
+  tasaFija: string;
+  cer: string;
+  vencimiento: IsoDate;
+  /** Vencimiento − 10 hábiles: hasta dónde llega el CER que cobra el par. */
+  cerHasta: IsoDate;
+  /** Inflación acumulada de L a cerHasta según el par. */
+  beAcumuladoPar: number;
+  /** Lo mismo según las curvas. */
+  beAcumuladoCurva: number;
+  /**
+   * Inflación mensual promedio (30 días) desde el último CER publicado hasta
+   * cerHasta, según el par y según las curvas. Es la comparación que importa:
+   * lo ya publicado es igual para los dos y diluiría la diferencia.
+   */
+  mensualPar: number;
+  mensualCurva: number;
+  /** Si la diferencia pasa el umbral. */
+  seAparta: boolean;
+}
+
 export interface BreakevenResponse {
   metodo: 'encadenado sobre curvas ajustadas';
   /**
@@ -159,11 +196,27 @@ export interface BreakevenResponse {
     segunLaCurva: number | null;
   };
   meses: MesBreakeven[];
+  controles: ControlPar[];
   warnings: string[];
 }
 
 /** Umbral de "anómalamente alto": el doble del último IPC publicado. */
 const FACTOR_ALTO = 2;
+
+/**
+ * Cuánto se puede apartar la curva de un par, en inflación mensual promedio,
+ * antes de marcarlo: 0,10 puntos. Es del orden del sesgo que tenía el ajuste
+ * CER cuando se hacía con toda la curva hasta 2029.
+ */
+const UMBRAL_CONTROL = 0.001;
+
+/**
+ * Horizonte mínimo, desde el último CER publicado, para que un par sirva de
+ * control. Un par que cobra el CER de un día después de lo publicado mide la
+ * inflación de ese único día: llevada a mes, cualquier centavo de precio la
+ * vuelve absurda.
+ */
+const DIAS_MINIMOS_CONTROL = 20;
 
 export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenResponse> {
   // Con precios de cierre de la última rueda terminada: el breakeven es un
@@ -193,8 +246,9 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   }
 
   const nominal = regresionLogaritmica(puntosDelAjuste(fija.instruments, 'tea'));
-  const real = regresionLogaritmica(puntosDelAjuste(cer.instruments, 'tea'));
-  if (!nominal || !real) throw new Error('No hay puntos suficientes para ajustar alguna de las curvas.');
+  if (!nominal) throw new Error('No hay puntos suficientes para ajustar la curva de tasa fija.');
+  const real = regresionLogaritmica(tramoComun(puntosDelAjuste(cer.instruments, 'tea'), nominal.hasta));
+  if (!real) throw new Error('No hay puntos suficientes para ajustar la curva CER.');
 
   const liquidacion = parseIsoDate(cer.settlementDate);
   const fechaL = toIsoDate(restarDiasHabiles(liquidacion, CER_LAG_BUSINESS_DAYS));
@@ -284,6 +338,49 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   }
   if (meses.length === 0) warnings.push('Las curvas no se superponen más allá de la inflación conocida.');
 
+  // ── Control contra pares del mismo vencimiento ──
+  const logConocido = Math.log(U.valor / L.valor);
+  const cerPorVencimiento = new Map(
+    cer.instruments.filter(entraAlControl).map((i) => [i.maturityDate, i]),
+  );
+  const controles: ControlPar[] = [];
+  for (const f of fija.instruments.filter(entraAlControl)) {
+    const c = cerPorVencimiento.get(f.maturityDate);
+    if (!c || f.tea === null || c.tea === null) continue;
+    const cerHasta = toIsoDate(restarDiasHabiles(parseIsoDate(f.maturityDate), CER_LAG_BUSINESS_DAYS));
+    const curva = crecimiento(cerHasta);
+    const diasDesdeU = daysBetween(parseIsoDate(U.fecha), parseIsoDate(cerHasta));
+    // Sólo donde hay algo que comparar: bastante después de lo publicado y
+    // dentro de lo que cubren las curvas.
+    if (diasDesdeU < DIAS_MINIMOS_CONTROL || !dentroDelRango(curva.dias)) continue;
+
+    const logPar =
+      (f.daysToMaturity / DAY_COUNT_BASIS) * (Math.log1p(f.tea) - Math.log1p(c.tea));
+    const mensual = (log: number) =>
+      Math.expm1(((log - logConocido) * DAYS_PER_MONTH) / diasDesdeU);
+    const mensualPar = mensual(logPar);
+    const mensualCurva = mensual(curva.log);
+    controles.push({
+      tasaFija: f.ticker,
+      cer: c.ticker,
+      vencimiento: f.maturityDate,
+      cerHasta,
+      beAcumuladoPar: Math.expm1(logPar),
+      beAcumuladoCurva: Math.expm1(curva.log),
+      mensualPar,
+      mensualCurva,
+      seAparta: Math.abs(mensualPar - mensualCurva) > UMBRAL_CONTROL,
+    });
+  }
+  const apartados = controles.filter((c) => c.seAparta);
+  if (apartados.length > 0) {
+    warnings.push(
+      `La curva se aparta más de ${(UMBRAL_CONTROL * 100).toFixed(2)} puntos mensuales de ${apartados
+        .map((c) => `${c.tasaFija}/${c.cer}`)
+        .join(', ')}.`,
+    );
+  }
+
   return {
     metodo: 'encadenado sobre curvas ajustadas',
     tradeDate: cer.tradeDate,
@@ -297,12 +394,44 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
       segunLaCurva: dentroDelRango(control.dias) ? Math.expm1(control.log) : null,
     },
     meses,
+    controles,
     warnings,
   };
 }
 
 function resumen({ a, b, r2, n, desde, hasta }: AjusteLogaritmico): AjusteResumen {
   return { a, b, r2, n, desde, hasta };
+}
+
+/**
+ * Los puntos del ajuste real que caen en el tramo que cubre tasa fija, más
+ * el primero que lo pasa.
+ *
+ * La curva CER llega hasta 2029 y la de tasa fija hasta unos nueve meses, y
+ * el breakeven sólo se calcula donde están las dos. Si el ajuste real usa
+ * también el tramo largo —reales del 10% a dos y tres años—, la forma
+ * logarítmica se empina para alcanzarlos y queda uno o dos puntos por encima
+ * de los papeles reales entre los cuatro y los doce meses, justo donde se
+ * usa. Eso bajaba el breakeven unos 0,15 puntos por mes contra lo que dicen
+ * los pares del mismo vencimiento.
+ *
+ * El papel de más es para que el borde del tramo quede cubierto por datos y
+ * no por el extremo de la regresión, donde un ajuste es menos firme.
+ */
+function tramoComun(puntos: PuntoAjuste[], hasta: number): PuntoAjuste[] {
+  const ordenados = [...puntos].sort((a, b) => a.dias - b.dias);
+  const siguiente = ordenados.find((p) => p.dias > hasta);
+  return ordenados.filter((p) => p.dias <= hasta || p === siguiente);
+}
+
+/** Los papeles que valen para el control por pares: la misma regla que el ajuste. */
+function entraAlControl(i: InstrumentRow): boolean {
+  return (
+    i.estructura === 'cero-cupon' &&
+    entraALaCurvaPorDefecto(i) &&
+    i.quality.level === 'ok' &&
+    i.tea !== null
+  );
 }
 
 // ─── Meses INDEC y ventanas del CER ──────────────────────────────────────
