@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import type { InstrumentRow, VistaUniverso } from '@/lib/types';
 import {
   entero,
-  fechaCorta,
+  fechaNumerica,
   monto,
   numeroFirmado,
   pct,
@@ -40,7 +40,7 @@ const VENCE: Columna = {
   titulo: 'Vence',
   numerica: false,
   valor: (i) => i.maturityDate,
-  celda: (i) => fechaCorta(i.maturityDate),
+  celda: (i) => fechaNumerica(i.maturityDate),
 };
 
 const DIAS: Columna = {
