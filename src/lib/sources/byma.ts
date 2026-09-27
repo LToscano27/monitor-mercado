@@ -293,7 +293,9 @@ async function traerCierres(
   antesDe?: string,
 ): Promise<Map<string, Quote>> {
   const quotes = new Map<string, Quote>();
-  const LOTE = 4; // BYMA no documenta rate limit; no lo apuramos
+  // BYMA no documenta rate limit; no lo apuramos. Seis a la vez son cinco
+  // tandas para los treinta papeles de la CER, contra ocho de a cuatro.
+  const LOTE = 6;
 
   for (let i = 0; i < symbols.length; i += LOTE) {
     const lote = symbols.slice(i, i + LOTE);

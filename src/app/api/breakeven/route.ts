@@ -9,8 +9,8 @@ import { buildBreakeven } from '@/lib/breakeven';
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-/** Dos universos, el CER y el IPC: más pedidos que una curva sola. */
-export const maxDuration = 45;
+/** Dos universos uno después del otro, el CER y el IPC: más que una curva sola. */
+export const maxDuration = 60;
 
 /**
  * Sale de precios de cierre, así que cambia una vez por día. Diez minutos de

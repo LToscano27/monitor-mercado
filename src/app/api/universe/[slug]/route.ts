@@ -11,8 +11,12 @@ import { getUniverse, listUniverses } from '@/lib/universes';
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-/** La rama de cierre son ~11 pedidos a la serie histórica de BYMA. */
-export const maxDuration = 30;
+/**
+ * La rama de cierre es un pedido por papel a la serie histórica de BYMA
+ * (treinta en la CER), más el CER del BCRA y alguna ficha nueva. Cada paso
+ * tiene su techo; esto es la suma de los techos con margen.
+ */
+export const maxDuration = 45;
 
 /** En rueda los precios refrescan cada ~20s en la fuente. */
 const CACHE_EN_RUEDA = 20;

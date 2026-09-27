@@ -27,11 +27,16 @@ import type { AnyUniverse } from './universes/types';
  * respuesta posible: ni datos ni explicación. Con un presupuesto compartido,
  * el segundo intento usa lo que sobra y siempre queda tiempo para responder.
  */
-const PRESUPUESTO_MS = 18_000;
+const PRESUPUESTO_MS = 22_000;
 /** BYMA sano responde en ~2s. Si tarda más, cortamos y vamos a los cierres. */
 const PANEL_TIMEOUT_MS = 5_000;
-/** La serie de cierre son ~11 pedidos en lotes; se le deja lo que quede. */
-const CLOSING_TIMEOUT_MAX_MS = 12_000;
+/**
+ * La serie de cierre es un pedido por papel. Con tasa fija eran diez y doce
+ * segundos sobraban; la CER tiene treinta, y desde Vercel una tanda lenta
+ * alcanzaba para cortar el lote a mitad de camino: los papeles que quedaban
+ * sin pedir salían en la tabla sin ningún dato.
+ */
+const CLOSING_TIMEOUT_MAX_MS = 16_000;
 /**
  * Techo para resolver especies nuevas. Corre fuera del presupuesto de las
  * cotizaciones, así que necesita su propio límite: sin él, una ficha colgada

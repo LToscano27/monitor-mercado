@@ -92,16 +92,27 @@ export function PanelBreakeven() {
    */
   const barras = useMemo<Barra[]>(() => {
     if (!datos) return [];
-    const publicadas: Barra[] = datos.conocida.meses
-      .filter((m) => !m.parcial && m.ipcIndec !== null)
-      .map((m, k, todos) => ({
+    // La acumulada de cada mes publicado es lo que subió el CER desde el
+    // punto de partida hasta el fin de su ventana, parcial incluido.
+    let factor = 1;
+    const publicadas: Barra[] = [];
+    for (const m of datos.conocida.meses) {
+      factor *= 1 + m.cer;
+      if (m.parcial) continue;
+      publicadas.push({
         mes: m.mes,
-        valor: m.ipcIndec as number,
+        // Si la serie del INDEC todavía no se actualizó, lo que acumuló el
+        // CER: es la cifra oficial redondeada a un decimal.
+        valor: m.ipcIndec ?? m.cer,
         publicada: true,
-        acumulada: k === todos.length - 1 ? datos.conocida.acumulada : null,
+        acumulada: factor - 1,
         marcada: false,
-        detalle: `IPC ${mesCorto(m.mes)} publicado por el INDEC: ${pct(m.ipcIndec)}. En el CER: ${pct(m.cer)}.`,
-      }));
+        detalle:
+          m.ipcIndec !== null
+            ? `IPC ${mesCorto(m.mes)} publicado por el INDEC: ${pct(m.ipcIndec)}. En el CER: ${pct(m.cer)}.`
+            : `IPC ${mesCorto(m.mes)} según el CER: ${pct(m.cer)}. La serie del INDEC todavía no se actualizó.`,
+      });
+    }
     const implicitas: Barra[] = datos.meses.map((m) => ({
       mes: m.mes,
       valor: m.inflacionMensual,

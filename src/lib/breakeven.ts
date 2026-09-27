@@ -262,14 +262,19 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   const L: CerPunto = { fecha: fechaL, valor: cerEn(fechaL) };
 
   // ── Inflación conocida ──
-  // El último mes con IPC publicado y cuya ventana del CER ya está entera en
-  // la serie: cierra el 15 de dos meses después y ese día tiene que estar.
+  // Un mes es conocido cuando su ventana del CER ya está entera en la serie
+  // del BCRA: cierra el 15 de dos meses después y ese día tiene que estar.
+  //
+  // Lo decide el CER y no la serie del INDEC a propósito. El BCRA extiende
+  // el CER el mismo día que sale el IPC, pero datos.gob.ar puede tardar uno
+  // o dos días en actualizar; en ese hueco el mes ya es un dato y no tiene
+  // sentido seguir mostrándolo como expectativa. Mientras tanto se muestra
+  // con lo que acumuló el CER, que es la cifra oficial redondeada.
   let ultimoConocido: string | null = null;
-  for (const mes of [...ipc.keys()].sort()) {
-    const fin = finDeVentana(mes);
-    if (fin > L.fecha && serie.valor(fin) !== null) ultimoConocido = mes;
+  for (let mes = mesDeLaVentana(L.fecha); serie.valor(finDeVentana(mes)) !== null; mes = sumarMeses(mes, 1)) {
+    ultimoConocido = mes;
   }
-  if (!ultimoConocido) throw new Error('No hay ningún mes con IPC y CER publicados después de L.');
+  if (!ultimoConocido) throw new Error('No hay ningún mes con CER publicado después de L.');
 
   const conocidos: MesConocido[] = [];
   for (let mes = mesDeLaVentana(L.fecha); mes <= ultimoConocido; mes = sumarMeses(mes, 1)) {
@@ -304,7 +309,7 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   const control = crecimiento(finConocido);
 
   // ── Forwards de mercado ──
-  const ultimoIpc = ipc.get(ultimoConocido) ?? null;
+  const ultimoIpc = ipc.get(ultimoConocido) ?? conocidos[conocidos.length - 1].cer;
   const meses: MesBreakeven[] = [];
   // Crecimiento acumulado desde L hasta el fin de la ventana anterior. El
   // primero es el CER real publicado, no la curva.
