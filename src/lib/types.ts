@@ -207,6 +207,12 @@ export interface VistaUniverso {
   ejeX: 'vencimiento' | 'duration';
   /** Si la ventana lleva el panel de inflación breakeven. */
   breakeven: boolean;
+  /**
+   * Si la curva se puede ver en TEM además de TIR. En la CER no: con bonos
+   * que pagan cupón, una TEM real es una conversión de la TIR sin lectura
+   * propia, y la curva se mira en TIR.
+   */
+  curvaEnTem: boolean;
 }
 
 export interface UniverseResponse {

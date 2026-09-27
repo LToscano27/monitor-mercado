@@ -48,12 +48,15 @@ export function Tablero({ slug, universos }: Props) {
   const [datos, setDatos] = useState<UniverseResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [metrica, setMetrica] = useState<Metrica>('tea');
+  const [metricaElegida, setMetrica] = useState<Metrica>('tea');
   // Sólo guardamos lo que el lector decidió a mano. El resto lo define el
   // default, así que un papel que se acerca al vencimiento sale solo de la
   // curva sin pisar ninguna elección previa.
   const [decisiones, setDecisiones] = useState<Record<string, 'dentro' | 'fuera'>>({});
   const [comparacion, setComparacion] = useState<FotoCurva | null>(null);
+  // En una curva sin TEM la medida es siempre la TIR, aunque el lector haya
+  // elegido TEM en otra pestaña.
+  const metrica: Metrica = datos && !datos.vista.curvaEnTem ? 'tea' : metricaElegida;
 
   const excluidos = useMemo(() => {
     const fuera = new Set<string>();
@@ -192,23 +195,25 @@ export function Tablero({ slug, universos }: Props) {
       {datos && (
         <>
           <div className={estilos.controles}>
-            <div
-              className={estilos.segmentado}
-              role="group"
-              aria-label="Medida de rendimiento"
-            >
-              {(['tea', 'tem'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMetrica(m)}
-                  aria-pressed={metrica === m}
-                  className={estilos.segmento}
-                >
-                  {NOMBRE_METRICA[m]}
-                </button>
-              ))}
-            </div>
+            {datos.vista.curvaEnTem && (
+              <div
+                className={estilos.segmentado}
+                role="group"
+                aria-label="Medida de rendimiento"
+              >
+                {(['tea', 'tem'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMetrica(m)}
+                    aria-pressed={metrica === m}
+                    className={estilos.segmento}
+                  >
+                    {NOMBRE_METRICA[m]}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <p className={estilos.nota}>Cotizaciones a 24 horas</p>
           </div>
