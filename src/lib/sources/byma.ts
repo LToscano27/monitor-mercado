@@ -262,6 +262,45 @@ export async function fetchHistory(
   }));
 }
 
+/** Lo que conserva BYMA en la serie histórica: dos años, con margen. */
+export const DIAS_SERIE_COMPLETA = 760;
+
+/**
+ * Baja la serie completa de cada papel, de a uno, con reintentos, y la deja
+ * en el cache que usan los cierres.
+ *
+ * Es para reconstruir muchos días seguidos. BYMA, de vez en cuando, no
+ * devuelve alguna serie; en el camino normal eso abre la pausa del cache y el
+ * papel queda afuera de todos los días que se armen en los 45 segundos
+ * siguientes. Bajando todo antes, despacio y reintentando, cada día se arma
+ * después sin tocar la red.
+ *
+ * Devuelve los papeles que no se pudieron bajar.
+ */
+export async function precargarSeries(symbols: readonly string[]): Promise<string[]> {
+  const fallidos: string[] = [];
+  for (const symbol of symbols) {
+    let serie: Cierre[] | null = null;
+    for (let intento = 0; intento < 3 && serie === null; intento += 1) {
+      try {
+        serie = await fetchHistory(symbol, DIAS_SERIE_COMPLETA);
+      } catch {
+        await new Promise((r) => setTimeout(r, 1500 * (intento + 1)));
+      }
+    }
+    if (serie === null) fallidos.push(symbol);
+    else {
+      const bajada = serie;
+      await memo(`historia:${symbol}:${DIAS_SERIE_COMPLETA}`, TTL_PRECARGA_MS, async () => bajada);
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return fallidos;
+}
+
+/** Una reconstrucción larga puede durar más que el cache normal de cierres. */
+const TTL_PRECARGA_MS = 6 * 60 * 60_000;
+
 /**
  * Cotizaciones de cierre para un conjunto de tickers.
  *
@@ -270,18 +309,22 @@ export async function fetchHistory(
  * rueda esos datos no existen, y no se inventan.
  *
  * Con `antesDe` se ignoran las ruedas de esa fecha en adelante. Hace falta
- * con el mercado abierto: la serie ya trae la barra de la rueda en curso, que
- * no es un cierre.
+ * con el mercado abierto —la serie ya trae la barra de la rueda en curso, que
+ * no es un cierre— y para reconstruir la curva de un día pasado.
+ *
+ * `dias` es cuánta serie se pide hacia atrás desde hoy. Para el cierre de
+ * ayer alcanza con veinte; para un día de hace un año, hace falta más.
  */
 export function fetchClosingQuotes(
   symbols: readonly string[],
   signal?: AbortSignal,
   antesDe?: string,
+  dias = 20,
 ): Promise<Map<string, Quote>> {
   return memo(
-    `cierres:${antesDe ?? ''}:${symbols.join(',')}`,
+    `cierres:${antesDe ?? ''}:${dias}:${symbols.join(',')}`,
     TTL_CIERRE_MS,
-    () => traerCierres(symbols, signal, antesDe),
+    () => traerCierres(symbols, signal, antesDe, dias),
     TTL_CIERRE_INCOMPLETO_MS,
     (cierres) => cierres.size < symbols.length,
   );
@@ -291,6 +334,7 @@ async function traerCierres(
   symbols: readonly string[],
   signal?: AbortSignal,
   antesDe?: string,
+  dias = 20,
 ): Promise<Map<string, Quote>> {
   const quotes = new Map<string, Quote>();
   // BYMA no documenta rate limit; no lo apuramos. Seis a la vez son cinco
@@ -300,55 +344,86 @@ async function traerCierres(
   for (let i = 0; i < symbols.length; i += LOTE) {
     const lote = symbols.slice(i, i + LOTE);
     const series = await Promise.all(
-      lote.map((s) => conReintento(() => fetchHistory(s, 20, signal), [] as Cierre[])),
+      lote.map((s) =>
+        conReintento(
+          // Por papel, además de por lote: al reconstruir muchos días seguidos
+          // la serie de cada papel se pide una sola vez y cada día la recorta.
+          () => memo(`historia:${s}:${dias}`, TTL_CIERRE_MS, () => fetchHistory(s, dias, signal)),
+          [] as Cierre[],
+        ),
+      ),
     );
 
     lote.forEach((symbol, k) => {
-      const barras = antesDe ? series[k].filter((b) => b.date < antesDe) : series[k];
-      if (!barras.length) return;
-      const ultima = barras[barras.length - 1];
-      const previa = barras[barras.length - 2];
-
-      quotes.set(symbol, {
-        symbol,
-        last: ultima.close || null,
-        previousClose: previa?.close ?? null,
-        open: null,
-        high: null,
-        low: null,
-        vwap: null,
-        bid: null,
-        ask: null,
-        bidSize: null,
-        askSize: null,
-        volumeNominal: ultima.volume,
-        /*
-         * La serie histórica sólo trae volumen nominal: no publica ni el monto
-         * efectivo ni el VWAP. Se reconstruye con el precio de cierre.
-         *
-         * En el panel en vivo la identidad es exacta —nominal × VWAP / 100 da
-         * el volumeAmount de BYMA al peso—, así que la única aproximación acá
-         * es usar el cierre en lugar del VWAP de la rueda. Medido sobre S30O6:
-         * VWAP 130,15 contra cierre 130,09, un 0,05% de diferencia. Es un
-         * error mucho menor que el de mostrar el nominal, que para ese papel
-         * quedaba 30% abajo.
-         *
-         * Esta rama sólo se usa de madrugada, cuando BYMA ya rotó el panel.
-         * Durante la rueda y en las horas posteriores al cierre el monto sale
-         * exacto del panel.
-         */
-        volumeAmount:
-          ultima.volume !== null ? (ultima.volume * ultima.close) / 100 : null,
-        orderCount: null,
-        lastTradeTime: null,
-        currency: 'ARS',
-        settlement: 'T+1',
-        maturityDate: null,
-        priceDate: ultima.date,
-        source: 'byma',
-      });
+      const cotizacion = cotizacionDeCierre(symbol, series[k], antesDe);
+      if (cotizacion) quotes.set(symbol, cotizacion);
     });
   }
 
+  // BYMA, de vez en cuando, no devuelve alguna serie. En el lote eso además
+  // abre la pausa del cache para ese papel, así que el reintento de adentro
+  // tampoco lo consigue. Antes de dar un papel por perdido se lo pide una vez
+  // más, solo y fuera del cache: sin esto, un hueco pasajero de la fuente lo
+  // sacaba de la curva —y del breakeven— hasta el próximo refresco.
+  for (const symbol of symbols.filter((s) => !quotes.has(s))) {
+    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const cotizacion = cotizacionDeCierre(symbol, await fetchHistory(symbol, dias, signal), antesDe);
+      if (cotizacion) quotes.set(symbol, cotizacion);
+    } catch {
+      // Sigue faltando: sale marcado y el lote se retiene sólo un minuto.
+    }
+  }
+
   return quotes;
+}
+
+/** La cotización de cierre que sale de una serie: la última rueda y la anterior. */
+function cotizacionDeCierre(
+  symbol: string,
+  serie: Cierre[],
+  antesDe?: string,
+): Quote | null {
+  const barras = antesDe ? serie.filter((b) => b.date < antesDe) : serie;
+  if (!barras.length) return null;
+  const ultima = barras[barras.length - 1];
+  const previa = barras[barras.length - 2];
+  return {
+    symbol,
+    last: ultima.close || null,
+    previousClose: previa?.close ?? null,
+    open: null,
+    high: null,
+    low: null,
+    vwap: null,
+    bid: null,
+    ask: null,
+    bidSize: null,
+    askSize: null,
+    volumeNominal: ultima.volume,
+    /*
+     * La serie histórica sólo trae volumen nominal: no publica ni el monto
+     * efectivo ni el VWAP. Se reconstruye con el precio de cierre.
+     *
+     * En el panel en vivo la identidad es exacta —nominal × VWAP / 100 da
+     * el volumeAmount de BYMA al peso—, así que la única aproximación acá
+     * es usar el cierre en lugar del VWAP de la rueda. Medido sobre S30O6:
+     * VWAP 130,15 contra cierre 130,09, un 0,05% de diferencia. Es un
+     * error mucho menor que el de mostrar el nominal, que para ese papel
+     * quedaba 30% abajo.
+     *
+     * Esta rama sólo se usa de madrugada, cuando BYMA ya rotó el panel.
+     * Durante la rueda y en las horas posteriores al cierre el monto sale
+     * exacto del panel.
+     */
+    volumeAmount:
+      ultima.volume !== null ? (ultima.volume * ultima.close) / 100 : null,
+    orderCount: null,
+    lastTradeTime: null,
+    currency: 'ARS',
+    settlement: 'T+1',
+    maturityDate: null,
+    priceDate: ultima.date,
+    source: 'byma',
+  };
 }

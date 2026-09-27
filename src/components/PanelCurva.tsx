@@ -3,7 +3,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { InstrumentRow, VistaUniverso } from '@/lib/types';
 import { escalaLineal, marcasLimpias } from '@/lib/escala';
-import { regresionLogaritmica } from '@/lib/ajuste';
+import { HABILES_MINIMOS_EN_CURVA, regresionLogaritmica, type AjusteLogaritmico } from '@/lib/ajuste';
+import type { FotoCurva } from '@/lib/historico';
 import {
   anios,
   entero,
@@ -30,7 +31,10 @@ export const NOMBRE_METRICA: Record<Metrica, string> = { tea: 'TIR', tem: 'TEM' 
  * CER. El ajuste se hace en las mismas unidades; pasar de días a años sólo
  * corre la constante del logaritmo, la curva dibujada es la misma.
  */
-export function plazoEnEje(i: InstrumentRow, eje: VistaUniverso['ejeX']): number {
+export function plazoEnEje(
+  i: Pick<InstrumentRow, 'daysToMaturity' | 'durationDays'>,
+  eje: VistaUniverso['ejeX'],
+): number {
   return eje === 'duration' ? (i.durationDays ?? i.daysToMaturity) / 365 : i.daysToMaturity;
 }
 
@@ -44,6 +48,8 @@ interface Props {
   /** Tickers sacados a mano del ajuste. */
   excluidos: ReadonlySet<string>;
   onToggle: (ticker: string) => void;
+  /** Curva de otro día para comparar, dibujada debajo de la actual. */
+  comparacion?: FotoCurva | null;
 }
 
 const ALTO_CURVA = 360;
@@ -55,7 +61,14 @@ const PAD_DER = 24;
 const RADIO_PUNTO = 4.5;
 const ALTO_TOTAL = PAD_SUP + ALTO_CURVA + ALTO_EJE;
 
-export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }: Props) {
+export function PanelCurva({
+  instrumentos,
+  metrica,
+  ejeX,
+  excluidos,
+  onToggle,
+  comparacion,
+}: Props) {
   const [ancho, setAncho] = useState(960);
   const [activo, setActivo] = useState<string | null>(null);
 
@@ -78,15 +91,39 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
     [instrumentos, excluidos],
   );
 
+  /**
+   * Los papeles del día de comparación, con las mismas reglas que los de hoy:
+   * si una ficha está apagada, ese papel sale también de la curva vieja, y
+   * los que estaban a punto de vencer ese día quedan afuera. Así las dos
+   * curvas se arman igual y la diferencia es sólo el mercado.
+   */
+  const pasados = useMemo(
+    () =>
+      (comparacion?.instrumentos ?? []).filter(
+        (i) =>
+          !excluidos.has(i.ticker) &&
+          i.businessDaysToMaturity >= HABILES_MINIMOS_EN_CURVA &&
+          i[metrica] !== null,
+      ),
+    [comparacion, excluidos, metrica],
+  );
+
   const geometria = useMemo(() => {
     const x0 = PAD_IZQ;
     const x1 = ancho - PAD_DER;
 
     const conDato = visibles.filter((i) => i[metrica] !== null);
-    const maxDias = Math.max(MINIMO_EJE[ejeX], ...visibles.map((i) => plazoEnEje(i, ejeX)));
+    const maxDias = Math.max(
+      MINIMO_EJE[ejeX],
+      ...visibles.map((i) => plazoEnEje(i, ejeX)),
+      ...pasados.map((i) => plazoEnEje(i, ejeX)),
+    );
     const x = escalaLineal([0, maxDias * 1.04], [x0, x1]);
 
-    const valores = conDato.map((i) => i[metrica] as number);
+    const valores = [
+      ...conDato.map((i) => i[metrica] as number),
+      ...pasados.map((i) => i[metrica] as number),
+    ];
     const minV = valores.length ? Math.min(...valores) : 0;
     const maxV = valores.length ? Math.max(...valores) : 1;
     const colchon = (maxV - minV) * 0.22 || 0.01;
@@ -100,7 +137,7 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
       marcasY: marcasLimpias(minV - colchon, maxV + colchon, 5),
       marcasX: marcasLimpias(0, maxDias * 1.04, 6).filter((d) => d > 0),
     };
-  }, [ancho, visibles, metrica, ejeX]);
+  }, [ancho, visibles, pasados, metrica, ejeX]);
 
   const { x, y } = geometria;
 
@@ -119,16 +156,19 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
     [visibles, metrica, ejeX],
   );
 
-  const trazo = useMemo(() => {
-    if (!ajuste) return null;
-    const MUESTRAS = 72;
-    const puntos: string[] = [];
-    for (let k = 0; k <= MUESTRAS; k += 1) {
-      const dias = ajuste.desde + ((ajuste.hasta - ajuste.desde) * k) / MUESTRAS;
-      puntos.push(`${k === 0 ? 'M' : 'L'} ${x(dias)} ${y(ajuste.evaluar(dias))}`);
-    }
-    return puntos.join(' ');
-  }, [ajuste, x, y]);
+  /** La curva vieja se ajusta igual que la de hoy: sin los papeles marcados ese día. */
+  const ajustePasado = useMemo(
+    () =>
+      regresionLogaritmica(
+        pasados
+          .filter((i) => i.calidad === 'ok')
+          .map((i) => ({ dias: plazoEnEje(i, ejeX), valor: i[metrica] as number })),
+      ),
+    [pasados, metrica, ejeX],
+  );
+
+  const trazo = useMemo(() => trazar(ajuste, x, y), [ajuste, x, y]);
+  const trazoPasado = useMemo(() => trazar(ajustePasado, x, y), [ajustePasado, x, y]);
 
   const instrumentoActivo = visibles.find((i) => i.ticker === activo) ?? null;
 
@@ -198,6 +238,21 @@ export function PanelCurva({ instrumentos, metrica, ejeX, excluidos, onToggle }:
         <text x={geometria.x0 - 12} y={geometria.curvaSup - 6} className={estilos.tituloEje}>
           {etiquetaMetrica}
         </text>
+
+        {/* ── curva de comparación: debajo de todo, en gris ─────── */}
+        {trazoPasado && <path d={trazoPasado} className={estilos.trazoPasado} />}
+        {comparacion &&
+          pasados.map((i) => (
+            <circle
+              key={`pasado-${i.ticker}`}
+              cx={x(plazoEnEje(i, ejeX))}
+              cy={y(i[metrica] as number)}
+              r={RADIO_PUNTO - 1}
+              className={estilos.puntoPasado}
+            >
+              <title>{`${i.ticker} el ${fechaCorta(comparacion.tradeDate)}: ${etiquetaMetrica} ${pct(i[metrica])}`}</title>
+            </circle>
+          ))}
 
         {/* ── curva de ajuste ───────────────────────────────────── */}
         {trazo && <path d={trazo} className={estilos.trazo} />}
@@ -375,4 +430,20 @@ function Fila({
       </dd>
     </>
   );
+}
+
+/** El trazo SVG de un ajuste, muestreado entre el primer y el último punto. */
+function trazar(
+  ajuste: AjusteLogaritmico | null,
+  x: (v: number) => number,
+  y: (v: number) => number,
+): string | null {
+  if (!ajuste) return null;
+  const MUESTRAS = 72;
+  const puntos: string[] = [];
+  for (let k = 0; k <= MUESTRAS; k += 1) {
+    const dias = ajuste.desde + ((ajuste.hasta - ajuste.desde) * k) / MUESTRAS;
+    puntos.push(`${k === 0 ? 'M' : 'L'} ${x(dias)} ${y(ajuste.evaluar(dias))}`);
+  }
+  return puntos.join(' ');
 }

@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "refresh:reference": "tsx scripts/refresh-reference.ts",
     "validate": "tsx scripts/validate.ts",
-    "validate:breakeven": "tsx scripts/validate-breakeven.ts"
+    "validate:breakeven": "tsx scripts/validate-breakeven.ts",
+    "historico:guardar": "tsx scripts/guardar-historico.ts",
+    "historico:reconstruir": "tsx scripts/reconstruir-historico.ts"
   },
   "dependencies": {
     "next": "^16.3.3",

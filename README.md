@@ -472,6 +472,35 @@ Un forward negativo o de más del doble del último IPC publicado sale marcado.
 No es una expectativa: es un problema en el ajuste de alguna curva, y se
 reporta en vez de suavizarse.
 
+## Historia de las curvas
+
+Cada curva se puede comparar con la de otro día: se elige una fecha en la
+cabecera y la curva de esa rueda se dibuja debajo de la actual, punteada y
+con los puntos huecos. Si la fecha no fue hábil, se toma la última rueda
+anterior. Los papeles apagados en las fichas salen también de la curva vieja,
+para que las dos se armen igual.
+
+**De dónde sale.** Una foto por rueda y por curva en `public/historico/`
+(`indice.json` y un archivo por día, unos 9 KB entre las dos curvas), con los
+rendimientos ya calculados: la foto de un día es lo que la pantalla mostró ese
+día. Son archivos estáticos que se piden sólo al elegir una fecha; la carga
+normal de la página no cambia.
+
+**Cómo se llena.**
+
+- `npm run historico:guardar` guarda la foto del último cierre. Lo corre
+  GitHub Actions de lunes a viernes a las 18:00 (`guardar-cierre.yml`).
+- `npm run historico:reconstruir -- --desde=AAAA-MM-DD --hasta=AAAA-MM-DD`
+  rehace días pasados con la serie histórica de BYMA. Baja primero la serie
+  completa de cada papel, despacio y con reintentos, y después arma cada día
+  sin tocar la red. No guarda un día si le falta el cierre de algún papel ni
+  pisa una foto guardada al cierre, salvo con `--pisar`.
+
+**Hasta dónde se puede ir.** BYMA guarda dos años de cierres y los borra de a
+un día; lo guardado acá queda. Para reconstruir días en los que vivían papeles
+que ya vencieron hace falta sumar sus condiciones a la referencia, porque
+BYMA borra la ficha técnica de un papel vencido.
+
 ## Mantenimiento
 
 `npm run refresh:reference` regenera los archivos versionados. Ya no hace

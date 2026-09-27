@@ -1,4 +1,5 @@
 import {
+  addDays,
   businessDaysBetween,
   daysBetween,
   isWithinTradingHours,
@@ -10,6 +11,7 @@ import {
 } from './conventions';
 import { evaluateQuote, worstLevel } from './quality';
 import * as byma from './sources/byma';
+import type { IsoDate } from './conventions';
 import type {
   InstrumentReference,
   InstrumentRow,
@@ -62,8 +64,11 @@ const MARKET_UTC_OFFSET = '-03:00';
  *  - 'cierre'  siempre el cierre de la última rueda terminada: con el
  *    mercado abierto, el de la rueda anterior. Es lo que usa el breakeven,
  *    que así cambia una vez por día y no con cada operación.
+ *  - { cierreDe }  el cierre de un día pasado, para reconstruir la historia.
+ *    Sólo sirve para los papeles de la referencia: los que ya vencieron y
+ *    salieron de ella no aparecen.
  */
-export type Precios = 'vivo' | 'cierre';
+export type Precios = 'vivo' | 'cierre' | { cierreDe: IsoDate };
 
 interface QuoteFetchResult {
   quotes: Map<string, Quote>;
@@ -130,13 +135,22 @@ async function fetchQuotes(
 ): Promise<QuoteFetchResult> {
   const warnings: string[] = [];
   const presupuesto = crearPresupuesto();
-  const hoyIso = toIsoDate(marketToday(momentoVisible(ahora)));
+  const pasado = typeof precios === 'object' ? precios.cierreDe : null;
+  const hoyIso = pasado ?? toIsoDate(marketToday(momentoVisible(ahora)));
 
   // Con la rueda en curso, quien pide cierres quiere el de la rueda anterior:
   // el panel es precio en vivo y no sirve, y de la serie histórica hay que
-  // descartar la barra de hoy, que todavía se está formando.
+  // descartar la barra de hoy, que todavía se está formando. Para un día
+  // pasado, lo mismo pero con la fecha pedida: se descarta todo lo posterior.
   const ruedaEnCurso = isWithinTradingHours(momentoVisible(ahora));
-  const soloAnteriores = precios === 'cierre' && ruedaEnCurso;
+  const soloAnteriores = (precios === 'cierre' && ruedaEnCurso) || pasado !== null;
+  const antesDe = pasado ? toIsoDate(addDays(parseIsoDate(pasado), 1)) : hoyIso;
+  // Para un día pasado se pide siempre la serie entera que guarda BYMA (dos
+  // años), no la justa: así la clave del cache es la misma para cualquier
+  // fecha y, al reconstruir muchos días seguidos, cada papel se pide una sola
+  // vez. Pedir una serie distinta por día castigaba a la fuente hasta que
+  // empezaba a cortar.
+  const diasDeSerie = pasado ? byma.DIAS_SERIE_COMPLETA : 20;
 
   let panel: Map<string, Quote> | null = null;
   if (!soloAnteriores) {
@@ -174,7 +188,8 @@ async function fetchQuotes(
   let cierres = new Map<string, Quote>();
   try {
     cierres = await presupuesto.correr(
-      (signal) => byma.fetchClosingQuotes(vivas, signal, soloAnteriores ? hoyIso : undefined),
+      (signal) =>
+        byma.fetchClosingQuotes(vivas, signal, soloAnteriores ? antesDe : undefined, diasDeSerie),
       Math.min(CLOSING_TIMEOUT_MAX_MS, presupuesto.restante()),
     );
   } catch (err) {

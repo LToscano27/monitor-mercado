@@ -83,6 +83,25 @@
   stroke-linejoin: round;
 }
 
+/* Curva de otro día, para comparar. Punteada y más fina que la de hoy, y
+   sus puntos huecos y sin rótulo: tiene que leerse como referencia, no
+   competir con el dato actual. */
+.trazoPasado {
+  fill: none;
+  stroke: var(--tinta-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.puntoPasado {
+  fill: none;
+  stroke: var(--tinta-3);
+  stroke-width: 1;
+  opacity: 0.75;
+}
+
 .puntoPleno {
   fill: var(--tinta);
   stroke: var(--panel);

@@ -1,0 +1,53 @@
+# Guarda la foto de cierre de cada curva en public/historico/.
+#
+# Es la historia que usa la comparación de curvas en pantalla. BYMA sólo
+# conserva los últimos dos años de cierres y los va borrando de a un día, así
+# que lo que no se guarda acá, se pierde.
+#
+# Corre de lunes a viernes a las 18:00 hora argentina: el feed de BYMA
+# termina de publicar la rueda a las 17:20 y a esa hora el cierre ya está. Un
+# feriado vuelve a escribir la foto de la rueda anterior, que es idéntica, y
+# no hay nada que subir.
+name: Guardar cierre
+
+on:
+  schedule:
+    - cron: '0 21 * * 1-5' # 21:00 UTC = 18:00 hora argentina
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: guardar-cierre
+  cancel-in-progress: false
+
+jobs:
+  guardar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Guardar la foto del día
+        run: npm run historico:guardar
+
+      - name: Subir si hay algo nuevo
+        run: |
+          if [ -z "$(git status --porcelain -- public/historico)" ]; then
+            echo "Sin fotos nuevas."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/historico
+          git commit -m "Foto de cierre del $(date -u +%Y-%m-%d)"
+          git push

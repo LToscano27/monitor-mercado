@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UniverseResponse } from '@/lib/types';
 import { NOMBRE_METRICA, PanelCurva, type Metrica } from './PanelCurva';
 import { PanelBreakeven } from './PanelBreakeven';
+import { SelectorComparacion } from './SelectorComparacion';
+import type { FotoCurva } from '@/lib/historico';
 import { SelectorInstrumentos } from './SelectorInstrumentos';
 import { TablaPrecios } from './TablaPrecios';
 import { SelectorTema } from './SelectorTema';
@@ -51,6 +53,7 @@ export function Tablero({ slug, universos }: Props) {
   // default, así que un papel que se acerca al vencimiento sale solo de la
   // curva sin pisar ninguna elección previa.
   const [decisiones, setDecisiones] = useState<Record<string, 'dentro' | 'fuera'>>({});
+  const [comparacion, setComparacion] = useState<FotoCurva | null>(null);
 
   const excluidos = useMemo(() => {
     const fuera = new Set<string>();
@@ -212,10 +215,23 @@ export function Tablero({ slug, universos }: Props) {
 
           <div className={estilos.contenido} data-cargando={cargando || undefined}>
             <section className={estilos.panel} aria-labelledby="t-curva">
-              <div className={estilos.panelCabecera}>
-                <h2 id="t-curva" className={estilos.panelTitulo}>
-                  {datos.vista.tituloCurva}
-                </h2>
+              <div className={`${estilos.panelCabecera} ${estilos.cabeceraCurva}`}>
+                <div className={estilos.tituloConClave}>
+                  <h2 id="t-curva" className={estilos.panelTitulo}>
+                    {datos.vista.tituloCurva}
+                  </h2>
+                  {comparacion && (
+                    <span className={estilos.clave} aria-hidden>
+                      <span className={estilos.claveHoy} /> rueda del {fechaCorta(datos.tradeDate)}
+                      <span className={estilos.clavePasado} /> rueda del {fechaCorta(comparacion.tradeDate)}
+                    </span>
+                  )}
+                </div>
+                <SelectorComparacion
+                  slug={slug}
+                  ruedaActual={datos.tradeDate}
+                  onFoto={setComparacion}
+                />
               </div>
               <SelectorInstrumentos
                 instrumentos={datos.instruments}
@@ -236,6 +252,7 @@ export function Tablero({ slug, universos }: Props) {
                 ejeX={datos.vista.ejeX}
                 excluidos={excluidos}
                 onToggle={alternarInstrumento}
+                comparacion={comparacion}
               />
             </section>
 
