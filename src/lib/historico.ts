@@ -61,11 +61,21 @@ export function fotoDesde(u: UniverseResponse): FotoCurva {
         businessDaysToMaturity: i.businessDaysToMaturity,
         durationDays: i.durationDays === null ? null : Math.round(i.durationDays * 10) / 10,
         lastPrice: i.lastPrice,
-        tem: i.tem,
-        tea: i.tea,
+        tem: redondear(i.tem),
+        tea: redondear(i.tea),
         calidad: i.quality.level,
       })),
   };
+}
+
+/**
+ * Ocho decimales de tasa son un centésimo de punto básico: sobra. Redondear
+ * hace además que la foto dé idéntica en cualquier máquina —la última cifra
+ * de un número de punto flotante cambia entre una PC y un servidor— y que el
+ * proceso diario no suba un cambio vacío cuando reescribe un día ya guardado.
+ */
+function redondear(v: number | null): number | null {
+  return v === null ? null : Math.round(v * 1e8) / 1e8;
 }
 
 /** La última fecha disponible que no sea posterior a la pedida. */
