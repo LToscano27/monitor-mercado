@@ -43,9 +43,8 @@ const PASO_ANGOSTO = 48;
 interface Barra {
   mes: string;
   valor: number;
-  publicada: boolean;
-  /** Inflación acumulada desde el CER de liquidación hasta el fin del mes. */
-  acumulada: number | null;
+  /** Inflación esperada acumulada desde el primer mes sin dato hasta éste. */
+  acumulada: number;
   marcada: boolean;
   detalle: string;
 }
@@ -85,39 +84,24 @@ export function PanelBreakeven() {
   }, []);
 
   /**
-   * Una barra por mes INDEC. Primero los ya publicados, con el dato del
-   * INDEC; después los que descuenta el mercado. El mes que la ventana del
-   * CER toma sólo en parte no se dibuja: una barra de dos días de inflación
-   * se leería como un mes de inflación casi nula.
+   * Una barra por cada mes INDEC cuya inflación todavía no se conoce. Lo ya
+   * publicado no se dibuja: el panel es sólo expectativa de mercado. Cuando
+   * sale un dato, ese mes desaparece solo y el primero pasa a ser el
+   * siguiente, porque el backend arranca siempre en el primer mes sin dato.
+   *
+   * La acumulada es el encadenado de las barras que se ven, desde la
+   * primera: sólo expectativa, sin el tramo ya publicado. Se encadena lo que
+   * muestran las barras (tasas de 30 días) y no los tramos crudos del CER,
+   * para que la primera acumulada sea igual a la primera barra y cualquiera
+   * pueda rehacer la cuenta con lo que ve.
    */
   const barras = useMemo<Barra[]>(() => {
     if (!datos) return [];
-    // La acumulada de cada mes publicado es lo que subió el CER desde el
-    // punto de partida hasta el fin de su ventana, parcial incluido.
     let factor = 1;
-    const publicadas: Barra[] = [];
-    for (const m of datos.conocida.meses) {
-      factor *= 1 + m.cer;
-      if (m.parcial) continue;
-      publicadas.push({
-        mes: m.mes,
-        // Si la serie del INDEC todavía no se actualizó, lo que acumuló el
-        // CER: es la cifra oficial redondeada a un decimal.
-        valor: m.ipcIndec ?? m.cer,
-        publicada: true,
-        acumulada: factor - 1,
-        marcada: false,
-        detalle:
-          m.ipcIndec !== null
-            ? `IPC ${mesCorto(m.mes)} publicado por el INDEC: ${pct(m.ipcIndec)}. En el CER: ${pct(m.cer)}.`
-            : `IPC ${mesCorto(m.mes)} según el CER: ${pct(m.cer)}. La serie del INDEC todavía no se actualizó.`,
-      });
-    }
-    const implicitas: Barra[] = datos.meses.map((m) => ({
+    return datos.meses.map((m) => ({
       mes: m.mes,
       valor: m.inflacionMensual,
-      publicada: false,
-      acumulada: m.beAcumulado,
+      acumulada: (factor *= 1 + m.inflacionMensual) - 1,
       marcada: m.marcas.length > 0,
       detalle:
         `IPC ${mesCorto(m.mes)} implícito: ${pct(m.inflacionMensual)}. ` +
@@ -126,7 +110,6 @@ export function PanelBreakeven() {
         (m.marcas.includes('negativo') ? ' Forward negativo: problema de ajuste, no expectativa.' : '') +
         (m.marcas.includes('alto') ? ' Forward de más del doble del último IPC: problema de ajuste.' : ''),
     }));
-    return [...publicadas, ...implicitas];
   }, [datos]);
 
   const geo = useMemo(() => {
@@ -146,8 +129,6 @@ export function PanelBreakeven() {
   }, [ancho, barras]);
 
   const angosto = geo.paso < PASO_ANGOSTO;
-  const hayPublicadas = barras.some((b) => b.publicada);
-  const primeraImplicita = barras.findIndex((b) => !b.publicada);
 
   return (
     <section className={estilos.panel} aria-labelledby="t-breakeven">
@@ -167,43 +148,17 @@ export function PanelBreakeven() {
       {error && !datos && <p className={estilos.falla}>No se pudo calcular: {error}</p>}
 
       {datos && barras.length > 0 && (
-        <>
-          <div className={estilos.leyenda} aria-hidden>
-            {hayPublicadas && (
-              <span className={estilos.clave}>
-                <span className={`${estilos.muestra} ${estilos.muestraPublicada}`} />
-                Publicada por el INDEC
-              </span>
-            )}
-            <span className={estilos.clave}>
-              <span className={`${estilos.muestra} ${estilos.muestraImplicita}`} />
-              Implícita en los bonos
-            </span>
-          </div>
-
-          <div className={estilos.lienzo} ref={medir}>
+        <div className={estilos.lienzo} ref={medir}>
             <svg
               viewBox={`0 0 ${ancho} ${ALTO_TOTAL}`}
               width="100%"
               height={ALTO_TOTAL}
               role="img"
               className={angosto ? estilos.angosto : undefined}
-              aria-label={`Inflación mensual por mes INDEC. ${barras
-                .map((b) => `${mesCorto(b.mes)} ${pct(b.valor)}${b.publicada ? ' publicada' : ''}`)
+              aria-label={`Inflación mensual esperada por mes INDEC. ${barras
+                .map((b) => `${mesCorto(b.mes)} ${pct(b.valor)}`)
                 .join(', ')}.`}
             >
-              <defs>
-                <pattern
-                  id="rayado-publicada"
-                  width="5"
-                  height="5"
-                  patternUnits="userSpaceOnUse"
-                  patternTransform="rotate(45)"
-                >
-                  <line x1="0" y1="0" x2="0" y2="5" className={estilos.rayado} />
-                </pattern>
-              </defs>
-
               {geo.marcasY.map((v) => (
                 <g key={`gy-${v}`}>
                   <line x1={geo.x0} x2={geo.x1} y1={geo.y(v)} y2={geo.y(v)} className={estilos.grilla} />
@@ -212,17 +167,6 @@ export function PanelBreakeven() {
                   </text>
                 </g>
               ))}
-
-              {/* Donde termina lo publicado y empieza lo que descuenta el mercado. */}
-              {hayPublicadas && primeraImplicita > 0 && (
-                <line
-                  x1={geo.x0 + geo.paso * primeraImplicita}
-                  x2={geo.x0 + geo.paso * primeraImplicita}
-                  y1={PAD_SUP - 10}
-                  y2={geo.base}
-                  className={estilos.corte}
-                />
-              )}
 
               {barras.map((b, k) => {
                 const cx = geo.centro(k);
@@ -236,14 +180,7 @@ export function PanelBreakeven() {
                       y={arriba}
                       width={geo.anchoBarra}
                       height={Math.max(alto, 1)}
-                      className={
-                        b.publicada
-                          ? estilos.barraPublicada
-                          : b.marcada
-                            ? estilos.barraMarcada
-                            : estilos.barraImplicita
-                      }
-                      fill={b.publicada ? 'url(#rayado-publicada)' : undefined}
+                      className={b.marcada ? estilos.barraMarcada : estilos.barraImplicita}
                     />
                     <text x={cx} y={arriba - 7} className={estilos.valor}>
                       {pct(b.valor)}
@@ -251,11 +188,9 @@ export function PanelBreakeven() {
                     <text x={cx} y={geo.base + 18} className={estilos.mes}>
                       {angosto ? mesSolo(b.mes) : mesCorto(b.mes)}
                     </text>
-                    {b.acumulada !== null && (
-                      <text x={cx} y={geo.base + 38} className={estilos.acumulada}>
-                        {pct(b.acumulada, 1)}
-                      </text>
-                    )}
+                    <text x={cx} y={geo.base + 38} className={estilos.acumulada}>
+                      {pct(b.acumulada, 1)}
+                    </text>
                   </g>
                 );
               })}
@@ -268,8 +203,7 @@ export function PanelBreakeven() {
                 ACUM.
               </text>
             </svg>
-          </div>
-        </>
+        </div>
       )}
     </section>
   );

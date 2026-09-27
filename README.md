@@ -448,11 +448,19 @@ de sus vecinos por culpa de febrero.
 ### Lo que ya se publicó no es breakeven
 
 El BCRA publica el CER hasta el 15 del mes siguiente al último IPC. El tramo
-de L a esa fecha es **inflación conocida**: se muestra aparte, con el dato del
-INDEC, y no se mezcla con la expectativa de mercado. El primer forward se mide
-contra ese CER publicado y no contra la curva, que en ese plazo no agrega
-información y sólo sumaría su error de ajuste. Lo que diría la curva ahí
-viaja igual en la respuesta, como control.
+de L a esa fecha es **inflación conocida** y no se mezcla con la expectativa
+de mercado: viaja en la respuesta, con el dato del INDEC, pero el panel no la
+dibuja. El panel muestra sólo los meses cuya inflación todavía no se conoce;
+cuando sale un dato, ese mes desaparece solo y el primero pasa a ser el
+siguiente. La acumulada de abajo es el encadenado de las barras que se ven.
+
+Un mes pasa a conocido cuando el BCRA extiende el CER hasta el fin de su
+ventana, sin esperar a que datos.gob.ar actualice la serie del INDEC, que a
+veces tarda uno o dos días.
+
+El primer forward se mide contra ese CER publicado y no contra la curva, que
+en ese plazo no agrega información y sólo sumaría su error de ajuste. Lo que
+diría la curva ahí viaja igual en la respuesta, como control.
 
 El INDEC publica el IPC con más decimales de los que usa el CER: agosto de
 2026 fue 1,659% y el CER acumuló 1,700%, la cifra oficial redondeada a un
