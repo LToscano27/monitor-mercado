@@ -466,6 +466,11 @@ El INDEC publica el IPC con más decimales de los que usa el CER: agosto de
 2026 fue 1,659% y el CER acumuló 1,700%, la cifra oficial redondeada a un
 decimal. Los dos viajan en la respuesta.
 
+El INDEC no es imprescindible: si datos.gob.ar no contesta, los meses
+conocidos salen con lo que acumuló el CER, el breakeven se publica igual y
+queda un aviso en `warnings`. El panel, además, reintenta dos veces antes de
+mostrar un error, porque casi siempre es un corte de segundos de una fuente.
+
 ### Forwards raros
 
 Un forward negativo o de más del doble del último IPC publicado sale marcado.

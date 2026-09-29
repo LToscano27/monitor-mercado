@@ -252,7 +252,16 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
 
   const liquidacion = parseIsoDate(cer.settlementDate);
   const fechaL = toIsoDate(restarDiasHabiles(liquidacion, CER_LAG_BUSINESS_DAYS));
-  const [serie, ipc] = await Promise.all([fetchCer(fechaL), fetchIpcMensual()]);
+  // El IPC del INDEC es sólo la cifra exacta de los meses conocidos: lo que
+  // decide y calcula todo es el CER. Si datos.gob.ar no contesta, esos meses
+  // salen con lo que acumuló el CER y el breakeven se publica igual.
+  const [serie, ipc] = await Promise.all([
+    fetchCer(fechaL),
+    fetchIpcMensual().catch((err: Error): ReadonlyMap<string, number> => {
+      warnings.push(`Sin IPC del INDEC (${err.message}): los meses conocidos salen del CER.`);
+      return new Map();
+    }),
+  ]);
 
   const cerEn = (fecha: IsoDate): number => {
     const v = serie.valor(fecha);

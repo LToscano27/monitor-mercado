@@ -12,6 +12,8 @@ import estilos from './PanelBreakeven.module.css';
  * solo sin recargar la página.
  */
 const REFRESCO_MS = 10 * 60_000;
+const REINTENTOS = 2;
+const ESPERA_REINTENTO_MS = 3_000;
 
 const ALTO_BARRAS = 200;
 const PAD_SUP = 26;
@@ -54,15 +56,27 @@ export function PanelBreakeven() {
   const [error, setError] = useState<string | null>(null);
   const [ancho, setAncho] = useState(960);
 
+  /**
+   * Si una fuente de afuera no contesta a tiempo, el cálculo falla entero.
+   * Suele ser un corte de segundos, así que se reintenta antes de mostrar
+   * el error.
+   */
   const traer = useCallback(async () => {
-    try {
-      const res = await fetch('/api/breakeven');
-      const cuerpo = await res.json();
-      if (!res.ok) throw new Error(cuerpo.detail ?? `El servidor respondió ${res.status}`);
-      setDatos(cuerpo as BreakevenResponse);
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
+    for (let intento = 0; ; intento++) {
+      try {
+        const res = await fetch('/api/breakeven');
+        const cuerpo = await res.json();
+        if (!res.ok) throw new Error(cuerpo.detail ?? `El servidor respondió ${res.status}`);
+        setDatos(cuerpo as BreakevenResponse);
+        setError(null);
+        return;
+      } catch (err) {
+        if (intento >= REINTENTOS) {
+          setError((err as Error).message);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, ESPERA_REINTENTO_MS));
+      }
     }
   }, []);
 
