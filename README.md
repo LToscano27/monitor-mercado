@@ -417,8 +417,9 @@ tramo de plazo, que dan el nivel pero no el perfil mensual.
 
 ### Por qué logaritmo y no Nelson-Siegel
 
-El método es el de la Nota Técnica N°8/2024 del BCRA ("Expectativas de
-inflación implícitas en el mercado de renta fija argentino") —Fisher sobre curvas ajustadas, el CER partido
+El método es el de la [Nota Técnica N°8/2024 del
+BCRA](Calculo%20BE%20BCRA.pdf) ("Expectativas de inflación implícitas en el
+mercado de renta fija argentino") —Fisher sobre curvas ajustadas, el CER partido
 en lo conocido y lo que falta, los cortes alineados con el día 15— con una
 diferencia: el BCRA ajusta las curvas con Nelson-Siegel y acá se usa
 `TEA = a + b·ln(días)`.
