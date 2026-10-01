@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-24T19:48:00.470Z",
+  "generatedAt": "2026-10-01T18:11:04.668Z",
   "source": "BYMA ficha técnica (bnown/fichatecnica/especies/general)",
   "instruments": [
     {
@@ -45,15 +45,6 @@
       "issueDate": "2025-10-31",
       "maturityDate": "2026-10-30",
       "issueTem": 0.0255,
-      "temSource": "byma-ficha"
-    },
-    {
-      "symbol": "S30S6",
-      "name": "LETRA DEL TESORO NACIONAL CAPITALIZABLE EN PESOS CON VENCIMIENTO 30 DE SEPTIEMBRE DE 2026",
-      "isin": "AR0379015875",
-      "issueDate": "2026-03-16",
-      "maturityDate": "2026-09-30",
-      "issueTem": 0.0253,
       "temSource": "byma-ficha"
     },
     {
