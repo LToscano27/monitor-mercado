@@ -37,7 +37,7 @@ import { tasaFija } from './universes/tasa-fija';
  * Es el método de la Nota Técnica N°8/2024 del BCRA salvo por la forma de
  * las curvas: el BCRA usa Nelson-Siegel. Se probó y con los nueve o diez
  * papeles de cada curva no se acerca más a los pares y se mueve más de un
- * día al otro (ver README, "Por qué logaritmo y no Nelson-Siegel").
+ * día al otro (ver docs/breakeven.md, "Por qué logaritmo y no Nelson-Siegel").
  *
  * Los pares que sí vencen el mismo día no se usan para calcular: se usan de
  * control. Su breakeven acumulado es exacto, y si la curva se aparta de él,
