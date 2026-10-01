@@ -10,6 +10,7 @@
     "refresh:reference": "tsx scripts/refresh-reference.ts",
     "validate": "tsx scripts/validate.ts",
     "validate:breakeven": "tsx scripts/validate-breakeven.ts",
+    "validate:modelos": "tsx scripts/comparar-modelos.ts",
     "historico:guardar": "tsx scripts/guardar-historico.ts",
     "historico:reconstruir": "tsx scripts/reconstruir-historico.ts"
   },

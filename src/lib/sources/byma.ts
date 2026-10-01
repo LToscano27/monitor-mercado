@@ -1,5 +1,5 @@
 import type { Quote } from '../types';
-import { memo } from '../cache';
+import { estaCacheado, memo } from '../cache';
 
 /** Identificarse es de buena educación con una API pública sin key. */
 const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
@@ -206,20 +206,52 @@ export interface Cierre {
 const SUFIJO_24HS = ' 24HS';
 
 /**
- * Un fallo de red transitorio no puede hacer desaparecer un instrumento de la
- * curva. Se reintenta una vez antes de darlo por perdido; si igual falla, el
- * instrumento sale marcado y el lector se entera.
+ * BYMA frena el exceso con un 503 inmediato: medido, una tanda de treinta
+ * series seguidas pasa entera y la siguiente pierde siete u ocho papeles. El
+ * breakeven pide las dos curvas, cuarenta series, y caía justo ahí: salía
+ * calculado sin tres o cuatro papeles.
+ *
+ * El freno dura poco, así que alcanza con esperar y volver a pedir. La espera
+ * crece con cada intento para no renovarlo.
  */
-async function conReintento<T>(fn: () => Promise<T>, alFallar: T): Promise<T> {
-  try {
-    return await fn();
-  } catch {
-    await new Promise((r) => setTimeout(r, 400));
-  }
-  try {
-    return await fn();
-  } catch {
-    return alFallar;
+const REINTENTOS_SERIE = 3;
+const ESPERA_REINTENTO_MS = 700;
+/** Respiro entre tandas de series, para no llegar al freno. */
+const PAUSA_ENTRE_LOTES_MS = 250;
+
+/** Espera que se corta si el pedido se quedó sin tiempo. */
+function esperar(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error('sin tiempo para reintentar'));
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new Error('sin tiempo para reintentar'));
+      },
+      { once: true },
+    );
+  });
+}
+
+/**
+ * La serie de un papel, insistiendo si BYMA frena. Un fallo transitorio no
+ * puede hacer desaparecer un instrumento de la curva; si después de los
+ * reintentos sigue sin venir, el instrumento sale marcado.
+ */
+async function historiaConReintentos(
+  symbol: string,
+  dias: number,
+  signal?: AbortSignal,
+): Promise<Cierre[]> {
+  for (let intento = 0; ; intento += 1) {
+    try {
+      return await fetchHistory(symbol, dias, signal);
+    } catch (err) {
+      if (intento >= REINTENTOS_SERIE) throw err;
+      await esperar(ESPERA_REINTENTO_MS * (intento + 1), signal);
+    }
   }
 }
 
@@ -343,14 +375,21 @@ async function traerCierres(
 
   for (let i = 0; i < symbols.length; i += LOTE) {
     const lote = symbols.slice(i, i + LOTE);
+    if (i > 0 && lote.some((s) => !estaCacheado(`historia:${s}:${dias}`))) {
+      await esperar(PAUSA_ENTRE_LOTES_MS, signal).catch(() => undefined);
+    }
     const series = await Promise.all(
       lote.map((s) =>
-        conReintento(
-          // Por papel, además de por lote: al reconstruir muchos días seguidos
-          // la serie de cada papel se pide una sola vez y cada día la recorta.
-          () => memo(`historia:${s}:${dias}`, TTL_CIERRE_MS, () => fetchHistory(s, dias, signal)),
-          [] as Cierre[],
-        ),
+        // Por papel, además de por lote: al reconstruir muchos días seguidos
+        // la serie de cada papel se pide una sola vez y cada día la recorta.
+        // Una serie vacía se retiene poco: puede ser un hueco de la fuente.
+        memo(
+          `historia:${s}:${dias}`,
+          TTL_CIERRE_MS,
+          () => historiaConReintentos(s, dias, signal),
+          TTL_CIERRE_INCOMPLETO_MS,
+          (serie) => serie.length === 0,
+        ).catch(() => [] as Cierre[]),
       ),
     );
 
@@ -360,15 +399,18 @@ async function traerCierres(
     });
   }
 
-  // BYMA, de vez en cuando, no devuelve alguna serie. En el lote eso además
-  // abre la pausa del cache para ese papel, así que el reintento de adentro
-  // tampoco lo consigue. Antes de dar un papel por perdido se lo pide una vez
-  // más, solo y fuera del cache: sin esto, un hueco pasajero de la fuente lo
-  // sacaba de la curva —y del breakeven— hasta el próximo refresco.
+  // Última pasada por los que sigan faltando, de a uno y fuera del cache
+  // (un fallo en el lote deja la clave del papel en pausa). Sin esto, un
+  // hueco pasajero de la fuente lo sacaba de la curva —y del breakeven—
+  // hasta el próximo refresco.
   for (const symbol of symbols.filter((s) => !quotes.has(s))) {
-    await new Promise((r) => setTimeout(r, 600));
     try {
-      const cotizacion = cotizacionDeCierre(symbol, await fetchHistory(symbol, dias, signal), antesDe);
+      await esperar(ESPERA_REINTENTO_MS, signal);
+      const cotizacion = cotizacionDeCierre(
+        symbol,
+        await historiaConReintentos(symbol, dias, signal),
+        antesDe,
+      );
       if (cotizacion) quotes.set(symbol, cotizacion);
     } catch {
       // Sigue faltando: sale marcado y el lote se retiene sólo un minuto.

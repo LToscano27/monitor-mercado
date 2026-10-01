@@ -1,8 +1,9 @@
 import {
   entraALaCurvaPorDefecto,
-  puntosDelAjuste,
+  nelsonSiegel,
   regresionLogaritmica,
-  type AjusteLogaritmico,
+  type AjusteCurva,
+  type ModeloCurva,
   type PuntoAjuste,
 } from './ajuste';
 import { buildUniverse } from './build';
@@ -17,7 +18,7 @@ import {
   toIsoDate,
   type IsoDate,
 } from './conventions';
-import { fetchCer } from './sources/bcra';
+import { fetchCer, type SerieDiaria } from './sources/bcra';
 import { fetchIpcMensual } from './sources/indec';
 import type { CerPunto, InstrumentRow } from './types';
 import { tasaCer } from './universes/tasa-cer';
@@ -32,6 +33,11 @@ import { tasaFija } from './universes/tasa-fija';
  * precio—, sino las dos curvas ajustadas (TEA = a + b·ln días, sólo cero
  * cupón) evaluadas en las mismas fechas. La real se ajusta sólo en el tramo
  * que cubre la nominal (ver `tramoComun`).
+ *
+ * Es el método de la Nota Técnica N°8/2024 del BCRA salvo por la forma de
+ * las curvas: el BCRA usa Nelson-Siegel. Se probó y con los nueve o diez
+ * papeles de cada curva no se acerca más a los pares y se mueve más de un
+ * día al otro (ver README, "Por qué logaritmo y no Nelson-Siegel").
  *
  * Los pares que sí vencen el mismo día no se usan para calcular: se usan de
  * control. Su breakeven acumulado es exacto, y si la curva se aparta de él,
@@ -92,15 +98,20 @@ import { tasaFija } from './universes/tasa-fija';
  * información y sólo sumaría su error de ajuste.
  */
 
-export interface AjusteResumen {
-  a: number;
-  b: number;
+interface ResumenBase {
   r2: number;
   n: number;
   /** Rango de días cubierto por los instrumentos del ajuste. */
   desde: number;
   hasta: number;
 }
+
+/** Los parámetros de una curva ajustada, según el modelo con que se hizo. */
+export type AjusteResumen = ResumenBase &
+  (
+    | { modelo: 'nelson-siegel'; beta0: number; beta1: number; beta2: number; tau: number }
+    | { modelo: 'logaritmico'; a: number; b: number }
+  );
 
 export interface MesConocido {
   /** Mes INDEC, 'YYYY-MM'. */
@@ -179,6 +190,8 @@ export interface BreakevenResponse {
   tradeDate: IsoDate;
   settlementDate: IsoDate;
   fetchedAt: string;
+  /** Con qué forma se ajustaron las dos curvas. */
+  modelo: ModeloCurva;
   curvas: { nominal: AjusteResumen; real: AjusteResumen };
   cer: {
     /** L: CER de liquidación − 10 hábiles, punto de partida de todo. */
@@ -218,6 +231,9 @@ const UMBRAL_CONTROL = 0.001;
  */
 const DIAS_MINIMOS_CONTROL = 20;
 
+/** Cómo empieza el aviso de que a una curva le faltó un papel. */
+export const AVISO_SIN_CIERRE = 'Sin cierre en BYMA';
+
 export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenResponse> {
   // Con precios de cierre de la última rueda terminada: el breakeven es un
   // dato para leer una vez por día, y con precios en vivo se movería con cada
@@ -242,16 +258,12 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
     .filter((i) => i.estructura === 'cero-cupon' && i.lastPrice === null)
     .map((i) => i.ticker);
   if (sinCierre.length > 0) {
-    warnings.push(`Sin cierre en BYMA, fuera del ajuste: ${sinCierre.join(', ')}.`);
+    warnings.push(`${AVISO_SIN_CIERRE}, fuera del ajuste: ${sinCierre.join(', ')}.`);
   }
 
-  const nominal = regresionLogaritmica(puntosDelAjuste(fija.instruments, 'tea'));
-  if (!nominal) throw new Error('No hay puntos suficientes para ajustar la curva de tasa fija.');
-  const real = regresionLogaritmica(tramoComun(puntosDelAjuste(cer.instruments, 'tea'), nominal.hasta));
-  if (!real) throw new Error('No hay puntos suficientes para ajustar la curva CER.');
-
-  const liquidacion = parseIsoDate(cer.settlementDate);
-  const fechaL = toIsoDate(restarDiasHabiles(liquidacion, CER_LAG_BUSINESS_DAYS));
+  const fechaL = toIsoDate(
+    restarDiasHabiles(parseIsoDate(cer.settlementDate), CER_LAG_BUSINESS_DAYS),
+  );
   // El IPC del INDEC es sólo la cifra exacta de los meses conocidos: lo que
   // decide y calcula todo es el CER. Si datos.gob.ar no contesta, esos meses
   // salen con lo que acumuló el CER y el breakeven se publica igual.
@@ -262,6 +274,65 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
       return new Map();
     }),
   ]);
+
+  const calculo = calcularBreakeven({
+    fija: fija.instruments.map(papelDe),
+    cer: cer.instruments.map(papelDe),
+    settlementDate: cer.settlementDate,
+    serie,
+    ipc,
+  });
+
+  return {
+    metodo: 'encadenado sobre curvas ajustadas',
+    tradeDate: cer.tradeDate,
+    settlementDate: cer.settlementDate,
+    fetchedAt: now.toISOString(),
+    ...calculo,
+    warnings: [...warnings, ...calculo.warnings],
+  };
+}
+
+/** Lo que el cálculo necesita de cada papel. Lo cumplen la fila viva y la foto guardada. */
+export type PapelBreakeven = Pick<
+  InstrumentRow,
+  'ticker' | 'estructura' | 'maturityDate' | 'daysToMaturity' | 'businessDaysToMaturity' | 'tea'
+> & {
+  /** Sin marcas de calidad. */
+  ok: boolean;
+};
+
+function papelDe(i: InstrumentRow): PapelBreakeven {
+  return { ...i, ok: i.quality.level === 'ok' };
+}
+
+export interface EntradaBreakeven {
+  fija: PapelBreakeven[];
+  cer: PapelBreakeven[];
+  settlementDate: IsoDate;
+  serie: SerieDiaria;
+  ipc: ReadonlyMap<string, number>;
+  /**
+   * Forma de las dos curvas. Por defecto la logarítmica; Nelson-Siegel está
+   * para compararlo (`npm run validate:modelos`), no se publica.
+   */
+  modelo?: ModeloCurva;
+}
+
+export type CalculoBreakeven = Omit<
+  BreakevenResponse,
+  'metodo' | 'tradeDate' | 'settlementDate' | 'fetchedAt'
+>;
+
+/**
+ * El cálculo entero, sin pedirle nada a nadie: con los mismos papeles, CER e
+ * IPC da siempre lo mismo. Así se puede correr sobre las fotos guardadas.
+ */
+export function calcularBreakeven(entrada: EntradaBreakeven): CalculoBreakeven {
+  const { serie, ipc } = entrada;
+  const warnings: string[] = [];
+  const liquidacion = parseIsoDate(entrada.settlementDate);
+  const fechaL = toIsoDate(restarDiasHabiles(liquidacion, CER_LAG_BUSINESS_DAYS));
 
   const cerEn = (fecha: IsoDate): number => {
     const v = serie.valor(fecha);
@@ -299,7 +370,76 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   }
   const finConocido = finDeVentana(ultimoConocido);
   const U: CerPunto = { fecha: finConocido, valor: cerEn(finConocido) };
-  const acumuladaConocida = U.valor / L.valor - 1;
+  const ultimoIpc = ipc.get(ultimoConocido) ?? conocidos[conocidos.length - 1].cer;
+  const base: BaseCalculo = { entrada, liquidacion, L, U, ultimoConocido, ultimoIpc };
+
+  // Las dos curvas con la misma forma: mezclar modelos entre la nominal y la
+  // real metería en el breakeven una diferencia que es sólo de forma.
+  const elegido = conModelo(base, entrada.modelo ?? 'logaritmico');
+  if (typeof elegido === 'string') throw new Error(elegido);
+
+  const { meses, controles } = elegido;
+  if (meses.length === 0) warnings.push('Las curvas no se superponen más allá de la inflación conocida.');
+  const apartados = controles.filter((c) => c.seAparta);
+  if (apartados.length > 0) {
+    warnings.push(
+      `La curva se aparta más de ${(UMBRAL_CONTROL * 100).toFixed(2)} puntos mensuales de ${apartados
+        .map((c) => `${c.tasaFija}/${c.cer}`)
+        .join(', ')}.`,
+    );
+  }
+
+  return {
+    modelo: elegido.modelo,
+    curvas: { nominal: resumen(elegido.nominal), real: resumen(elegido.real) },
+    cer: { liquidacion: L, ultimoPublicado: U },
+    conocida: {
+      acumulada: U.valor / L.valor - 1,
+      meses: conocidos,
+      segunLaCurva: elegido.segunLaCurva,
+    },
+    meses,
+    controles,
+    warnings,
+  };
+}
+
+interface BaseCalculo {
+  entrada: EntradaBreakeven;
+  liquidacion: Date;
+  L: CerPunto;
+  U: CerPunto;
+  ultimoConocido: string;
+  ultimoIpc: number;
+}
+
+interface ResultadoModelo {
+  modelo: ModeloCurva;
+  nominal: AjusteCurva;
+  real: AjusteCurva;
+  meses: MesBreakeven[];
+  controles: ControlPar[];
+  segunLaCurva: number | null;
+}
+
+/** Desvío absoluto promedio entre la curva y los pares, en inflación mensual. */
+export function desvioMedio(controles: ControlPar[]): number | null {
+  if (controles.length === 0) return null;
+  return controles.reduce((s, c) => s + Math.abs(c.mensualCurva - c.mensualPar), 0) / controles.length;
+}
+
+/** El breakeven con un modelo de curva, o por qué no se pudo ajustar. */
+function conModelo(base: BaseCalculo, modelo: ModeloCurva): ResultadoModelo | string {
+  const { entrada, liquidacion, L, U, ultimoConocido, ultimoIpc } = base;
+  const ajustar = modelo === 'nelson-siegel' ? nelsonSiegel : regresionLogaritmica;
+  const nombre = modelo === 'nelson-siegel' ? 'Nelson-Siegel' : 'El ajuste logarítmico';
+
+  const puntosFija = puntosDe(entrada.fija);
+  const nominal = ajustar(puntosFija);
+  if (!nominal) return `${nombre} no ajusta la curva de tasa fija (${puntosFija.length} puntos).`;
+  const puntosCer = tramoComun(puntosDe(entrada.cer), nominal.hasta);
+  const real = ajustar(puntosCer);
+  if (!real) return `${nombre} no ajusta la curva CER (${puntosCer.length} puntos).`;
 
   /**
    * Lo que el mercado espera que crezca el CER entre L y una fecha, en
@@ -315,14 +455,14 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
   const dentroDelRango = (dias: number) =>
     dias >= Math.max(nominal.desde, real.desde) && dias <= Math.min(nominal.hasta, real.hasta);
 
-  const control = crecimiento(finConocido);
+  const control = crecimiento(U.fecha);
 
   // ── Forwards de mercado ──
-  const ultimoIpc = ipc.get(ultimoConocido) ?? conocidos[conocidos.length - 1].cer;
   const meses: MesBreakeven[] = [];
   // Crecimiento acumulado desde L hasta el fin de la ventana anterior. El
   // primero es el CER real publicado, no la curva.
-  let logAnterior = Math.log(U.valor / L.valor);
+  const logConocido = Math.log(U.valor / L.valor);
+  let logAnterior = logConocido;
   for (let mes = sumarMeses(ultimoConocido, 1); ; mes = sumarMeses(mes, 1)) {
     const hasta = finDeVentana(mes);
     const c = crecimiento(hasta);
@@ -335,7 +475,7 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
     const inflacionMensual = Math.expm1((logVentana * DAYS_PER_MONTH) / largoVentana);
     const marcas: MarcaForward[] = [];
     if (inflacionMensual < 0) marcas.push('negativo');
-    if (ultimoIpc !== null && inflacionMensual > FACTOR_ALTO * ultimoIpc) marcas.push('alto');
+    if (inflacionMensual > FACTOR_ALTO * ultimoIpc) marcas.push('alto');
     meses.push({
       mes,
       ventana: { desde, hasta },
@@ -350,15 +490,13 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
     });
     logAnterior = c.log;
   }
-  if (meses.length === 0) warnings.push('Las curvas no se superponen más allá de la inflación conocida.');
 
   // ── Control contra pares del mismo vencimiento ──
-  const logConocido = Math.log(U.valor / L.valor);
   const cerPorVencimiento = new Map(
-    cer.instruments.filter(entraAlControl).map((i) => [i.maturityDate, i]),
+    entrada.cer.filter(entraAlControl).map((i) => [i.maturityDate, i]),
   );
   const controles: ControlPar[] = [];
-  for (const f of fija.instruments.filter(entraAlControl)) {
+  for (const f of entrada.fija.filter(entraAlControl)) {
     const c = cerPorVencimiento.get(f.maturityDate);
     if (!c || f.tea === null || c.tea === null) continue;
     const cerHasta = toIsoDate(restarDiasHabiles(parseIsoDate(f.maturityDate), CER_LAG_BUSINESS_DAYS));
@@ -386,35 +524,42 @@ export async function buildBreakeven(now: Date = new Date()): Promise<BreakevenR
       seAparta: Math.abs(mensualPar - mensualCurva) > UMBRAL_CONTROL,
     });
   }
-  const apartados = controles.filter((c) => c.seAparta);
-  if (apartados.length > 0) {
-    warnings.push(
-      `La curva se aparta más de ${(UMBRAL_CONTROL * 100).toFixed(2)} puntos mensuales de ${apartados
-        .map((c) => `${c.tasaFija}/${c.cer}`)
-        .join(', ')}.`,
-    );
-  }
 
   return {
-    metodo: 'encadenado sobre curvas ajustadas',
-    tradeDate: cer.tradeDate,
-    settlementDate: cer.settlementDate,
-    fetchedAt: now.toISOString(),
-    curvas: { nominal: resumen(nominal), real: resumen(real) },
-    cer: { liquidacion: L, ultimoPublicado: U },
-    conocida: {
-      acumulada: acumuladaConocida,
-      meses: conocidos,
-      segunLaCurva: dentroDelRango(control.dias) ? Math.expm1(control.log) : null,
-    },
+    modelo,
+    nominal,
+    real,
     meses,
     controles,
-    warnings,
+    segunLaCurva: dentroDelRango(control.dias) ? Math.expm1(control.log) : null,
   };
 }
 
-function resumen({ a, b, r2, n, desde, hasta }: AjusteLogaritmico): AjusteResumen {
-  return { a, b, r2, n, desde, hasta };
+function resumen(ajuste: AjusteCurva): AjusteResumen {
+  const { r2, n, desde, hasta } = ajuste;
+  return ajuste.modelo === 'nelson-siegel'
+    ? {
+        modelo: ajuste.modelo,
+        beta0: ajuste.beta0,
+        beta1: ajuste.beta1,
+        beta2: ajuste.beta2,
+        tau: ajuste.tau,
+        r2,
+        n,
+        desde,
+        hasta,
+      }
+    : { modelo: ajuste.modelo, a: ajuste.a, b: ajuste.b, r2, n, desde, hasta };
+}
+
+/**
+ * Puntos del ajuste: cero cupón, sin marcas y lejos del vencimiento. La
+ * misma regla que `puntosDelAjuste`, sobre lo mínimo que trae una foto.
+ */
+function puntosDe(papeles: PapelBreakeven[]): PuntoAjuste[] {
+  return papeles
+    .filter(entraAlControl)
+    .map((i) => ({ dias: i.daysToMaturity, valor: i.tea as number }));
 }
 
 /**
@@ -439,13 +584,8 @@ function tramoComun(puntos: PuntoAjuste[], hasta: number): PuntoAjuste[] {
 }
 
 /** Los papeles que valen para el control por pares: la misma regla que el ajuste. */
-function entraAlControl(i: InstrumentRow): boolean {
-  return (
-    i.estructura === 'cero-cupon' &&
-    entraALaCurvaPorDefecto(i) &&
-    i.quality.level === 'ok' &&
-    i.tea !== null
-  );
+function entraAlControl(i: PapelBreakeven): boolean {
+  return i.estructura === 'cero-cupon' && entraALaCurvaPorDefecto(i) && i.ok && i.tea !== null;
 }
 
 // ─── Meses INDEC y ventanas del CER ──────────────────────────────────────

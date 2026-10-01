@@ -21,8 +21,12 @@ async function main() {
     `cierre de la rueda ${be.tradeDate}  ·  liquidación ${be.settlementDate}  ·  consultado ${be.fetchedAt}`,
   );
   for (const [nombre, c] of Object.entries(be.curvas)) {
+    const forma =
+      c.modelo === 'nelson-siegel'
+        ? `β0 ${pct(c.beta0)}  β1 ${pct(c.beta1)}  β2 ${pct(c.beta2)}  τ ${c.tau.toFixed(0)} días`
+        : `TEA = ${pct(c.a, 3)} + ${pct(c.b, 3)} · ln(d)`;
     console.log(
-      `  curva ${nombre.padEnd(7)} TEA = ${pct(c.a, 3)} + ${pct(c.b, 3)} · ln(d)   R² ${c.r2.toFixed(3)}   n ${c.n}   días ${c.desde}–${c.hasta}`,
+      `  curva ${nombre.padEnd(7)} ${forma}   R² ${c.r2.toFixed(3)}   n ${c.n}   días ${c.desde}–${c.hasta}`,
     );
   }
 

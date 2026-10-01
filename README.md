@@ -35,6 +35,7 @@ registro.
 | `npm run validate -- --json` | JSON crudo del endpoint |
 | `npm run validate -- --universe=tasa-cer` | lo mismo para la curva CER, con el detalle del ajuste por CER |
 | `npm run validate:breakeven` | tabla del breakeven por mes INDEC |
+| `npm run validate:modelos` | logaritmo contra Nelson-Siegel sobre la historia guardada |
 | `npm run refresh:reference` | regenera la referencia estática de todos los universos desde la ficha técnica de BYMA |
 
 **No hacen falta variables de entorno.** Todas las fuentes son públicas y sin
@@ -101,6 +102,16 @@ Tres defensas, en capas:
    pedidos fallan rápido sin tocar la red.
 
 Medido: primera vuelta 24 pedidos, las dos siguientes 0.
+
+Antes de ese bloqueo hay un freno más suave: un **503 inmediato**. Medido el
+01/10/2026, una tanda de treinta series de cierre seguidas pasa entera y la
+siguiente pierde siete u ocho papeles. El breakeven pide las dos curvas,
+cuarenta series, y salía calculado sin tres o cuatro papeles. Por eso las
+series se piden con un respiro entre tandas y, ante un fallo, se espera y se
+vuelve a pedir hasta tres veces, con esperas crecientes. Bajo el mismo
+castigo, el código anterior traía entre 20 y 24 de los 29 papeles CER y éste
+los 29. Si aun así falta alguno, el breakeven lo avisa en `warnings` y la
+respuesta se retiene un minuto en el CDN en vez de diez.
 
 ### Mercado abierto y mercado cerrado
 
@@ -403,6 +414,41 @@ Usan formas más flexibles —Svensson, splines— porque tienen decenas de bono
 por curva; con los diez de tasa fija, una forma de dos parámetros es lo que
 se sostiene. En la plaza local lo más común son los pares o promedios por
 tramo de plazo, que dan el nivel pero no el perfil mensual.
+
+### Por qué logaritmo y no Nelson-Siegel
+
+El método es el de la Nota Técnica N°8/2024 del BCRA ("Expectativas de
+inflación implícitas en el mercado de renta fija argentino") —Fisher sobre curvas ajustadas, el CER partido
+en lo conocido y lo que falta, los cortes alineados con el día 15— con una
+diferencia: el BCRA ajusta las curvas con Nelson-Siegel y acá se usa
+`TEA = a + b·ln(días)`.
+
+Se probó el 01/10/2026 sobre las once ruedas guardadas (16/09 al 30/09), con
+τ buscado en grilla y acotado para que la joroba caiga entre los plazos con
+papeles:
+
+| | logaritmo | Nelson-Siegel |
+|---|---|---|
+| desvío medio contra los pares | 0,088 pp | 0,091 pp |
+| salto diario medio, octubre en adelante | 0,02–0,04 pp | 0,04–0,05 pp |
+| salto diario máximo, octubre y noviembre | 0,08–0,09 pp | 0,21–0,22 pp |
+
+Nelson-Siegel no se acerca más a los pares y se mueve más de un día al otro.
+Su τ va de 8 a 200 días según la rueda: con nueve papeles por curva, cuatro
+parámetros copian el ruido del tramo corto. Acotar más el τ no cambia el
+resultado (0,086 a 0,092 pp). El desvío contra los pares no viene de la forma
+de la curva sino del precio de papeles puntuales, y eso ninguna curva suave
+lo sigue.
+
+Tampoco se suman los CER con cupón, que la nota incluye por bootstrapping.
+Dentro del tramo que cubre tasa fija sólo cae TX26, al que le queda un único
+pago; sumarlo empeora el control (0,096 pp). El resto tiene sus flujos mucho
+más allá.
+
+Nelson-Siegel queda implementado (`nelsonSiegel` en `src/lib/ajuste.ts`) pero
+no se publica. `npm run validate:modelos` repite la comparación sobre toda la
+historia guardada: vale la pena volver a correrlo cuando haya más ruedas o
+más papeles por curva.
 
 ### Control contra pares
 

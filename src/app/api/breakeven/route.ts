@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buildBreakeven } from '@/lib/breakeven';
+import { AVISO_SIN_CIERRE, buildBreakeven } from '@/lib/breakeven';
 
 /**
  * Inflación breakeven, calculada entera en el backend: arma las dos curvas
@@ -19,13 +19,21 @@ export const maxDuration = 60;
  */
 const CACHE_S = 600;
 const STALE_WHILE_REVALIDATE = 600;
+/**
+ * Si a alguna curva le faltó un papel, la respuesta se retiene sólo un
+ * minuto: un hueco pasajero de BYMA no puede quedar servido veinte.
+ */
+const CACHE_INCOMPLETO_S = 60;
 
 export async function GET() {
   try {
     const payload = await buildBreakeven();
+    const incompleto = payload.warnings.some((w) => w.startsWith(AVISO_SIN_CIERRE));
     return NextResponse.json(payload, {
       headers: {
-        'Cache-Control': `public, s-maxage=${CACHE_S}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`,
+        'Cache-Control': incompleto
+          ? `public, s-maxage=${CACHE_INCOMPLETO_S}`
+          : `public, s-maxage=${CACHE_S}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`,
       },
     });
   } catch (err) {
