@@ -1,6 +1,6 @@
 # Monitor Mercado
 
-Tablero de renta fija en pesos del Tesoro argentino: curva de tasa fija,
+Monitor del mercado argentino en pesos: curva de tasa fija,
 curva CER e inflación breakeven, con datos públicos de BYMA, BCRA e INDEC.
 
 **En vivo: <https://monitor-mercado-4net.vercel.app>**
