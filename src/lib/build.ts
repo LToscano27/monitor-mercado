@@ -6,6 +6,7 @@ import {
   marketToday,
   momentoVisible,
   parseIsoDate,
+  ruedaDeHoySinCerrar,
   settlementDate,
   toIsoDate,
 } from './conventions';
@@ -142,8 +143,14 @@ async function fetchQuotes(
   // el panel es precio en vivo y no sirve, y de la serie histórica hay que
   // descartar la barra de hoy, que todavía se está formando. Para un día
   // pasado, lo mismo pero con la fecha pedida: se descarta todo lo posterior.
+  //
+  // "En curso" para los cierres es todo el día hasta la hora de cierre, no
+  // sólo desde la apertura: BYMA ya trae precios de hoy un rato antes, y
+  // tomados como cierre dejaban al breakeven calculado con una rueda de
+  // minutos, con la mitad de los papeles marcados por poco volumen.
   const ruedaEnCurso = isWithinTradingHours(momentoVisible(ahora));
-  const soloAnteriores = (precios === 'cierre' && ruedaEnCurso) || pasado !== null;
+  const soloAnteriores =
+    (precios === 'cierre' && ruedaDeHoySinCerrar(momentoVisible(ahora))) || pasado !== null;
   const antesDe = pasado ? toIsoDate(addDays(parseIsoDate(pasado), 1)) : hoyIso;
   // Para un día pasado se pide siempre la serie entera que guarda BYMA (dos
   // años), no la justa: así la clave del cache es la misma para cualquier

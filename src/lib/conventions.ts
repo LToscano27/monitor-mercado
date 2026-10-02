@@ -153,6 +153,26 @@ export function isWithinTradingHours(now: Date = new Date()): boolean {
 }
 
 /**
+ * ¿La rueda de hoy todavía no cerró? Vale desde la medianoche de un día
+ * hábil hasta la hora de cierre, también antes de la apertura.
+ *
+ * Es lo que decide si un precio de hoy puede llamarse cierre. BYMA empieza a
+ * publicar precios del día antes de la hora de apertura que se usa acá; sin
+ * esta pregunta, en ese rato los primeros precios de la mañana pasaban por
+ * el cierre de una rueda que recién empezaba.
+ */
+export function ruedaDeHoySinCerrar(now: Date = new Date()): boolean {
+  const hora = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: MARKET_TIMEZONE,
+      hour: '2-digit',
+      hour12: false,
+    }).format(now),
+  );
+  return isBusinessDay(marketToday(now)) && hora < TRADING_HOURS.close;
+}
+
+/**
  * Días hábiles entre dos fechas, sin contar la de partida.
  *
  * Es lo que dice cuánta vida operativa le queda a un papel: dos fechas a tres
