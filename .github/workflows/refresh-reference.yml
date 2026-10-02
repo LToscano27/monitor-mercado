@@ -87,7 +87,7 @@ jobs:
             echo "Sin cambios de contenido."
             exit 0
           fi
-          git config user.name 'LToscano27'
+          git config user.name 'LautaroToscano'
           git config user.email 'lautaro.toscano27@gmail.com'
           git add src/lib/reference
           git commit -m 'Refresca la referencia de los universos'

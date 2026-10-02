@@ -2,7 +2,7 @@ import type { Quote } from '../types';
 import { estaCacheado, memo } from '../cache';
 
 /** Identificarse es de buena educación con una API pública sin key. */
-const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
+const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LautaroToscano/monitor-mercado)';
 
 /** Techo por pedido individual a BYMA. */
 const REQUEST_TIMEOUT_MS = 7_000;

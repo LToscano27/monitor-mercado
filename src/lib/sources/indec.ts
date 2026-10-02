@@ -9,7 +9,7 @@ import { memo } from '../cache';
  */
 
 const URL_SERIES = 'https://apis.datos.gob.ar/series/api/series/';
-const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
+const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LautaroToscano/monitor-mercado)';
 const REQUEST_TIMEOUT_MS = 8_000;
 
 /** IPC Nacional, nivel general, variación mensual. Base diciembre 2016. */

@@ -46,7 +46,7 @@ jobs:
             echo "Sin fotos nuevas."
             exit 0
           fi
-          git config user.name 'LToscano27'
+          git config user.name 'LautaroToscano'
           git config user.email 'lautaro.toscano27@gmail.com'
           git add public/historico
           git commit -m "Foto de cierre del $(date -u +%Y-%m-%d)"

@@ -10,7 +10,7 @@ import type { IsoDate } from '../conventions';
  */
 
 const BASE = 'https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias';
-const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
+const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LautaroToscano/monitor-mercado)';
 const REQUEST_TIMEOUT_MS = 8_000;
 
 /** Coeficiente de Estabilización de Referencia, base 2/2/2002 = 1. */

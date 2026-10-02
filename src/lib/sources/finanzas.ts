@@ -24,7 +24,7 @@ import { memo } from '../cache';
 
 const BASE = 'https://www.argentina.gob.ar';
 const LISTADO = `${BASE}/economia/finanzas/noticias`;
-const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LToscano27/monitor-mercado)';
+const USER_AGENT = 'monitor-mercado/1.0 (+https://github.com/LautaroToscano/monitor-mercado)';
 
 const REQUEST_TIMEOUT_MS = 6_000;
 
